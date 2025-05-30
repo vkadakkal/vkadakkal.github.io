@@ -70,7 +70,6 @@
 
         // Extract listing IDs from embeds
         listingIds = embeds.map(embedHtml => {
-          // Try to extract data-id from the embed HTML
           const match = embedHtml.match(/data-id="(\d+)"/);
           return match ? match[1] : null;
         });
@@ -146,6 +145,7 @@
           body: JSON.stringify({ rankings })
         });
       } catch (err) {
+        alert('Failed to save rankings to JSONBin.io');
         console.error('Failed to save rankings:', err);
       }
     };
