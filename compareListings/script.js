@@ -26,6 +26,7 @@ async function init() {
     populateUsers();
     await loadVotes();
     await renderListingsAndLoadAirbnbScript();
+    setupCategoryScrollSpy();
   } catch (e) {
     setStatus('Error: ' + e.message);
   }
@@ -113,6 +114,7 @@ async function renderListingsAndLoadAirbnbScript() {
     }
   };
   document.body.appendChild(script);
+  setupCategoryScrollSpy(); // re-setup after rerender
 }
 
 function renderListings() {
@@ -121,10 +123,11 @@ function renderListings() {
   let globalIdx = 0;
   const catEntries = Object.entries(categories);
   catEntries.forEach(([cat, embeds], catIdx) => {
-    // Category header (sticky)
+    // Category header (not sticky, but has a marker for scrollspy)
     const catHeader = document.createElement('h2');
     catHeader.className = 'category-header';
     catHeader.textContent = cat;
+    catHeader.setAttribute('data-category', cat);
     container.appendChild(catHeader);
 
     embeds.forEach((embedDiv, embedIdx) => {
@@ -187,6 +190,36 @@ async function handleVote(cat, embedIdx, globalIdx, value) {
   votes[user][voteKey] = Number(value);
   await saveVotes();
   await renderListingsAndLoadAirbnbScript();
+}
+
+// Scrollspy logic for sticky header
+function setupCategoryScrollSpy() {
+  const header = document.getElementById('fixed-category-header');
+  const catHeaders = Array.from(document.querySelectorAll('.category-header'));
+  if (!catHeaders.length) {
+    header.textContent = '';
+    return;
+  }
+
+  function updateHeader() {
+    let current = catHeaders[0];
+    for (let i = 0; i < catHeaders.length; i++) {
+      const rect = catHeaders[i].getBoundingClientRect();
+      if (rect.top - 10 <= 0) {
+        current = catHeaders[i];
+      } else {
+        break;
+      }
+    }
+    header.textContent = current.textContent;
+    header.style.opacity = 1;
+  }
+
+  // Initial set
+  updateHeader();
+
+  window.removeEventListener('scroll', updateHeader);
+  window.addEventListener('scroll', updateHeader, { passive: true });
 }
 
 document.getElementById('userSelect').addEventListener('change', renderListingsAndLoadAirbnbScript);
