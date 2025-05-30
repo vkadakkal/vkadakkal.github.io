@@ -18,8 +18,8 @@ async function init() {
   try {
     setStatus('Loading configuration...');
     [users, urls, accessKey, binId] = await Promise.all([
-      fetchTextFile('users.txt').then(txt => txt.trim().split('\n')),
-      fetchTextFile('urls.txt').then(txt => txt.trim().split('\n')),
+      fetchTextFile('users.txt').then(txt => txt.trim().split('\n').filter(Boolean)),
+      fetchTextFile('urls.txt').then(txt => txt.trim().split('\n').filter(Boolean)),
       fetchTextFile('ACCESS_KEY.txt').then(txt => txt.trim()),
       fetchTextFile('BIN_ID.txt').then(txt => txt.trim())
     ]);
@@ -60,18 +60,22 @@ async function loadVotes() {
 
 async function saveVotes() {
   setStatus('Saving votes to jsonbin.io...');
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-    method: "PUT",
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': accessKey
-    },
-    body: JSON.stringify(votes)
-  });
-  if (res.ok) {
-    setStatus('Votes saved!');
-  } else {
-    setStatus('Failed to save votes.');
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: "PUT",
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': accessKey
+      },
+      body: JSON.stringify(votes)
+    });
+    if (res.ok) {
+      setStatus('Votes saved!');
+    } else {
+      setStatus('Failed to save votes.');
+    }
+  } catch (e) {
+    setStatus('Failed to save votes: ' + e.message);
   }
 }
 
@@ -94,6 +98,10 @@ function renderListings() {
       radio.addEventListener('change', () => handleVote(idx, radio.value));
     });
   });
+  // Airbnb embed loader (required after dynamic insert)
+  if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
+    window.AirbnbEmbedFrame.init();
+  }
 }
 
 function renderVoteControls(listingIdx) {
