@@ -11,8 +11,6 @@
     .user-select { margin-bottom: 1em; }
     .embed { margin-bottom: 0.5em; }
   </style>
-  <!-- Airbnb Embed Loader -->
-  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 </head>
 <body>
   <div class="status" id="status">Initializing...</div>
@@ -22,5 +20,7 @@
   </div>
   <div id="listings"></div>
   <script src="script.js"></script>
- </body>
+  <!-- Airbnb Embed Loader (keep at end of body!) -->
+  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
+</body>
 </html>
