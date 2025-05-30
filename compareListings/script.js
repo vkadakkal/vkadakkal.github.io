@@ -99,7 +99,7 @@ function renderListings() {
     });
   });
   // Airbnb embed loader (required after dynamic insert)
-  if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
+  if (window.AirbnbEmbedFrame ) {
     window.AirbnbEmbedFrame.init();
   }
 }
