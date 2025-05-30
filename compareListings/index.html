@@ -47,11 +47,9 @@
     <h2>Airbnb Listings</h2>
     <div id="embeds"></div>
   </div>
-
-  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
-  
   <script>
     let API_KEY = '';
+    let ACCESS_KEY = '';
     let BIN_ID = '';
     let API_URL = '';
 
@@ -66,23 +64,37 @@
       statusDiv.className = type;
     }
 
-    // Fetch API_KEY and BIN_ID first, then proceed
+    // Fetch API_KEY, ACCESS_KEY, and BIN_ID first, then proceed
     Promise.all([
       fetch('API_KEY.txt').then(apiKeyResponse => apiKeyResponse.text()),
+      fetch('ACCESS_KEY.txt').then(accessKeyResponse => accessKeyResponse.text()),
       fetch('BIN_ID.txt').then(binIdResponse => binIdResponse.text())
-    ]).then(([apiKeyText, binIdText]) => {
+    ]).then(([apiKeyText, accessKeyText, binIdText]) => {
       API_KEY = apiKeyText.trim();
+      ACCESS_KEY = accessKeyText.trim();
       BIN_ID = binIdText.trim();
       API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
       setStatus("Loading data from JSONBin…", "loading");
       startApp();
     });
 
+    function getHeaders() {
+      // Always include both keys if present
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Master-Key': API_KEY
+      };
+      if (ACCESS_KEY) {
+        headers['X-ACCESS-KEY'] = ACCESS_KEY;
+      }
+      return headers;
+    }
+
     function startApp() {
       Promise.all([
         fetch('users.txt').then(usersResponse => usersResponse.text()),
         fetch('urls.txt').then(urlsResponse => urlsResponse.text()),
-        fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } })
+        fetch(API_URL, { headers: getHeaders() })
           .then(rankingsResponse => {
             setStatus(`Loaded rankings (status ${rankingsResponse.status} ${rankingsResponse.statusText})`, 
               rankingsResponse.ok ? "success" : "error");
@@ -174,10 +186,7 @@
       try {
         const response = await fetch(API_URL, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': API_KEY
-          },
+          headers: getHeaders(),
           body: JSON.stringify({ rankings })
         });
         if (response.ok) {
@@ -197,5 +206,6 @@
       return rated.reduce((a,b) => a+b, 0) / rated.length;
     }
   </script>
+  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 </body>
 </html>
