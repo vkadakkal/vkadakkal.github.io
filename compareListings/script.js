@@ -85,7 +85,7 @@ function renderListings() {
   urls.forEach((divTag, idx) => {
     const listingDiv = document.createElement('div');
     listingDiv.className = 'listing';
-    // Display the embedded Airbnb div
+    // Insert Airbnb embed HTML
     listingDiv.innerHTML = `<div class="embed">${divTag}</div>`;
     // Voting controls
     const voteDiv = document.createElement('div');
@@ -99,9 +99,12 @@ function renderListings() {
     });
   });
   // Airbnb embed loader (required after dynamic insert)
-  if (window.AirbnbEmbedFrame ) {
-    window.AirbnbEmbedFrame.init();
-  }
+  // Wait a tick to ensure DOM is updated
+  setTimeout(() => {
+    if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
+      window.AirbnbEmbedFrame.init();
+    }
+  }, 0);
 }
 
 function renderVoteControls(listingIdx) {
