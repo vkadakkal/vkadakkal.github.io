@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Airbnb Embeds with User Voting</title>
+  <title>Airbnb Embeds with Persistent Voting</title>
   <style>
     .embed-row { margin-bottom: 40px; }
     .rank-buttons { margin: 10px 0; }
     button[disabled] { opacity: 0.6; }
+    #exportBtn { margin: 20px; padding: 10px; }
   </style>
 </head>
 <body>
   <div class="container mt-4">
     <h2>Airbnb Listings</h2>
+    <button id="exportBtn" onclick="exportRankings()">Export Rankings to File</button>
     <div id="embeds"></div>
   </div>
   <script>
@@ -19,14 +21,20 @@
     let embeds = [];
     let rankings = []; // rankings[listingIdx][userIdx] = true/false
 
-    // Load users and embeds, then render
+    // Load users, embeds, and rankings
     Promise.all([
-      fetch('users.txt').then(usersResponse => usersResponse.text()),
-      fetch('urls.txt').then(urlsResponse => urlsResponse.text())
+      fetch('users.txt').then(r => r.text()),
+      fetch('urls.txt').then(r => r.text())
     ]).then(([usersText, embedsText]) => {
       users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
       embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
-      rankings = embeds.map(() => Array(users.length).fill(false));
+      
+      // Load rankings from localStorage or initialize
+      const savedRankings = localStorage.getItem('rankings');
+      rankings = savedRankings 
+        ? JSON.parse(savedRankings) 
+        : embeds.map(() => Array(users.length).fill(false));
+      
       renderEmbeds();
     });
 
@@ -36,10 +44,8 @@
       embeds.forEach((embedHtml, idx) => {
         const div = document.createElement('div');
         div.className = "embed-row";
-        // Add Airbnb embed
         div.innerHTML = embedHtml;
 
-        // Add ranking buttons
         const rankDiv = document.createElement('div');
         rankDiv.className = "rank-buttons";
         rankDiv.innerHTML =
@@ -50,15 +56,18 @@
           ).join(' ') +
           ` <span id="votes-${idx}">Votes: ${rankings[idx].filter(Boolean).length}</span>`;
         div.appendChild(rankDiv);
-
         container.appendChild(div);
       });
     }
 
-    // Expose rank function globally
+    // Save to localStorage on rank
     window.rank = function(listingIdx, userIdx) {
       rankings[listingIdx][userIdx] = true;
-      // Update only the buttons and vote count for this embed
+      localStorage.setItem('rankings', JSON.stringify(rankings));
+      updateButtonsAndVotes(listingIdx);
+    };
+
+    function updateButtonsAndVotes(listingIdx) {
       users.forEach((user, u) => {
         const btn = document.getElementById(`rank-btn-${listingIdx}-${u}`);
         if (btn) {
@@ -66,12 +75,24 @@
           btn.innerHTML = `${user} ${rankings[listingIdx][u] ? '✔️' : 'Rank'}`;
         }
       });
-      // Update vote count
-      const votes = rankings[listingIdx].filter(Boolean).length;
-      document.getElementById(`votes-${listingIdx}`).textContent = `Votes: ${votes}`;
-    };
+      document.getElementById(`votes-${listingIdx}`).textContent = 
+        `Votes: ${rankings[listingIdx].filter(Boolean).length}`;
+    }
+
+    // Export rankings to a downloadable file
+    function exportRankings() {
+      const data = rankings.map((listing, idx) => 
+        `Listing ${idx + 1}: ${embeds[idx]} | Votes: ${listing.filter(Boolean).length}`
+      ).join('\n');
+      const blob = new Blob([data], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'rank.txt';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
   </script>
-  <!-- Only include the Airbnb embed script ONCE for all embeds -->
   <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 </body>
 </html>
