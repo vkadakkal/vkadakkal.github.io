@@ -36,32 +36,61 @@
     <div id="embeds"></div>
   </div>
   <script>
-    // Replace with your JSONBin API key and bin ID
-    const API_KEY = 'YOUR_API_KEY';
-    const BIN_ID = 'YOUR_BIN_ID';
-    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    let API_KEY = '';
+    let BIN_ID = '';
+    let API_URL = '';
 
     let users = [];
     let embeds = [];
-    let rankings = [];
+    let listingIds = [];
+    let rankings = []; // Array of { listing_id, votes: { user: rating } }
 
-    // Fetch initial data
+    // Fetch API_KEY and BIN_ID first, then proceed
     Promise.all([
-      fetch('users.txt').then(r => r.text()),
-      fetch('urls.txt').then(r => r.text()),
-      fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } })
-        .then(r => r.json())
-        .then(data => data?.record?.rankings || [])
-        .catch(() => [])
-    ]).then(([usersText, embedsText, savedRankings]) => {
-      users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
-      embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
-      // rankings[listing][user] = number (0-5)
-      rankings = savedRankings.length === embeds.length 
-        ? savedRankings 
-        : embeds.map(() => Array(users.length).fill(0));
-      renderEmbeds();
+      fetch('API_KEY.txt').then(apiKeyResponse => apiKeyResponse.text()),
+      fetch('BIN_ID.txt').then(binIdResponse => binIdResponse.text())
+    ]).then(([apiKeyText, binIdText]) => {
+      API_KEY = apiKeyText.trim();
+      BIN_ID = binIdText.trim();
+      API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+      startApp();
     });
+
+    function startApp() {
+      Promise.all([
+        fetch('users.txt').then(usersResponse => usersResponse.text()),
+        fetch('urls.txt').then(urlsResponse => urlsResponse.text()),
+        fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } })
+          .then(rankingsResponse => rankingsResponse.json())
+          .then(rankingsData => rankingsData?.record?.rankings || [])
+          .catch(() => [])
+      ]).then(([usersText, embedsText, savedRankings]) => {
+        users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
+        embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
+
+        // Extract listing IDs from embeds
+        listingIds = embeds.map(embedHtml => {
+          // Try to extract data-id from the embed HTML
+          const match = embedHtml.match(/data-id="(\d+)"/);
+          return match ? match[1] : null;
+        });
+
+        // Build rankings array: one object per listing
+        rankings = listingIds.map((listingId, idx) => {
+          // Try to find existing ranking for this listing
+          const existing = savedRankings.find(r => r.listing_id === listingId);
+          let votes = {};
+          users.forEach(user => {
+            votes[user] = existing && existing.votes && typeof existing.votes[user] !== 'undefined'
+              ? existing.votes[user]
+              : 0;
+          });
+          return { listing_id: listingId, votes };
+        });
+
+        renderEmbeds();
+      });
+    }
 
     function renderEmbeds() {
       const container = document.getElementById('embeds');
@@ -75,20 +104,21 @@
         users.forEach((user, userIdx) => {
           const row = document.createElement('div');
           row.className = 'user-rating-row';
+          const userVote = rankings[idx].votes[user] || 0;
           row.innerHTML = `<span class="username">${user}:</span> ` +
             [1,2,3,4,5].map(star =>
-              `<button class="star${rankings[idx][userIdx] >= star ? ' selected' : ''}" 
-                onclick="rate(${idx},${userIdx},${star})"
+              `<button class="star${userVote >= star ? ' selected' : ''}" 
+                onclick="rate('${rankings[idx].listing_id}','${user}',${star})"
                 title="${star} star${star>1?'s':''}">
                 &#9733;
               </button>`
             ).join(' ') +
-            `<span id="user-rating-${idx}-${userIdx}" style="margin-left:10px;">${rankings[idx][userIdx] ? rankings[idx][userIdx] + '★' : ''}</span>`;
+            `<span id="user-rating-${idx}-${userIdx}" style="margin-left:10px;">${userVote ? userVote + '★' : ''}</span>`;
           div.appendChild(row);
         });
 
         // Votes summary
-        const avg = averageRating(rankings[idx]);
+        const avg = averageRating(Object.values(rankings[idx].votes));
         const summary = document.createElement('div');
         summary.className = "votes-summary";
         summary.id = `votes-${idx}`;
@@ -100,10 +130,12 @@
     }
 
     // Update JSONBin.io on rate
-    window.rate = async function(listingIdx, userIdx, stars) {
-      rankings[listingIdx][userIdx] = stars;
-      updateStars(listingIdx, userIdx);
-      updateVotesSummary(listingIdx);
+    window.rate = async function(listingId, user, stars) {
+      // Find the index for this listing
+      const idx = rankings.findIndex(r => r.listing_id === listingId);
+      if (idx === -1) return;
+      rankings[idx].votes[user] = stars;
+      renderEmbeds();
       try {
         await fetch(API_URL, {
           method: 'PUT',
@@ -118,27 +150,12 @@
       }
     };
 
-    function updateStars(listingIdx, userIdx) {
-      for (let star = 1; star <= 5; ++star) {
-        const btns = document.querySelectorAll(
-          `#user-rating-${listingIdx}-${userIdx} ~ .star, #user-rating-${listingIdx}-${userIdx} .star`
-        );
-        // Instead, let's just re-render the whole embed (simpler and safer)
-      }
-      // Safer: re-render the whole embeds
-      renderEmbeds();
-    }
-
-    function updateVotesSummary(listingIdx) {
-      const avg = averageRating(rankings[listingIdx]);
-      const summary = document.getElementById(`votes-${listingIdx}`);
-      if (summary) summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
-    }
-
     function averageRating(arr) {
       const rated = arr.filter(x => x > 0);
       if (rated.length === 0) return 0;
       return rated.reduce((a,b) => a+b, 0) / rated.length;
     }
   </script>
-  <
+  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
+</body>
+</html>
