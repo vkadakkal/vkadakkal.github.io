@@ -2,39 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Airbnb Embeds with Persistent Voting</title>
+  <title>Airbnb Embeds with JSONBin Voting</title>
   <style>
     .embed-row { margin-bottom: 40px; }
     .rank-buttons { margin: 10px 0; }
     button[disabled] { opacity: 0.6; }
-    #exportBtn { margin: 20px; padding: 10px; }
   </style>
 </head>
 <body>
   <div class="container mt-4">
     <h2>Airbnb Listings</h2>
-    <button id="exportBtn" onclick="exportRankings()">Export Rankings to File</button>
     <div id="embeds"></div>
   </div>
   <script>
+    // Replace these with your values
+    const API_KEY = '$2a$10$F71JVe.NcK4dd9SWiwm/YeIVSY4JvtHESddyxostQVlwgUTpdVU5S';
+    const BIN_ID = '68393c8f8561e97a501d5c1a';
+    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
     let users = [];
     let embeds = [];
-    let rankings = []; // rankings[listingIdx][userIdx] = true/false
+    let rankings = [];
 
-    // Load users, embeds, and rankings
+    // Fetch initial data
     Promise.all([
       fetch('users.txt').then(r => r.text()),
-      fetch('urls.txt').then(r => r.text())
-    ]).then(([usersText, embedsText]) => {
+      fetch('urls.txt').then(r => r.text()),
+      fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } })
+        .then(r => r.json())
+        .then(data => data?.record?.rankings || [])
+        .catch(() => []) // Fallback if bin doesn’t exist
+    ]).then(([usersText, embedsText, savedRankings]) => {
       users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
       embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
-      
-      // Load rankings from localStorage or initialize
-      const savedRankings = localStorage.getItem('rankings');
-      rankings = savedRankings 
-        ? JSON.parse(savedRankings) 
+      rankings = savedRankings.length === embeds.length 
+        ? savedRankings 
         : embeds.map(() => Array(users.length).fill(false));
-      
       renderEmbeds();
     });
 
@@ -60,11 +63,23 @@
       });
     }
 
-    // Save to localStorage on rank
-    window.rank = function(listingIdx, userIdx) {
+    // Update JSONBin.io on rank
+    window.rank = async function(listingIdx, userIdx) {
       rankings[listingIdx][userIdx] = true;
-      localStorage.setItem('rankings', JSON.stringify(rankings));
       updateButtonsAndVotes(listingIdx);
+      
+      try {
+        await fetch(API_URL, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': API_KEY
+          },
+          body: JSON.stringify({ rankings })
+        });
+      } catch (err) {
+        console.error('Failed to save rankings:', err);
+      }
     };
 
     function updateButtonsAndVotes(listingIdx) {
@@ -77,20 +92,6 @@
       });
       document.getElementById(`votes-${listingIdx}`).textContent = 
         `Votes: ${rankings[listingIdx].filter(Boolean).length}`;
-    }
-
-    // Export rankings to a downloadable file
-    function exportRankings() {
-      const data = rankings.map((listing, idx) => 
-        `Listing ${idx + 1}: ${embeds[idx]} | Votes: ${listing.filter(Boolean).length}`
-      ).join('\n');
-      const blob = new Blob([data], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'rank.txt';
-      a.click();
-      window.URL.revokeObjectURL(url);
     }
   </script>
   <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
