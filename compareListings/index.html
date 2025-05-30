@@ -1,1 +1,38 @@
-test
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Listings in Frames</title>
+  <style>
+    .listing-frame {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ccc;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h2>Listings from urls.txt</h2>
+    <div id="frames"></div>
+  </div>
+  <script>
+    fetch('urls.txt')
+      .then(response => response.text())
+      .then(text => {
+        const urls = text.split('\n').map(line => line.trim()).filter(Boolean);
+        const framesDiv = document.getElementById('frames');
+        framesDiv.innerHTML = urls.map(url => `
+          <div>
+            <h4><a href="${url}" target="_blank">${url}</a></h4>
+            <iframe src="${url}" class="listing-frame"></iframe>
+          </div>
+        `).join('');
+      })
+      .catch(err => {
+        document.getElementById('frames').innerHTML = `<div style="color:red;">Could not load urls.txt: ${err.message}</div>`;
+      });
+  </script>
+</body>
+</html>
