@@ -9,10 +9,10 @@ function setStatus(msg) {
 }
 
 let users = [];
-let categories = {}; // { category: [embedDiv, ...] }
+let categories = {};
 let accessKey = '';
 let binId = '';
-let votes = {}; // { user: { category|listingIdx: vote } }
+let votes = {};
 
 async function init() {
   try {
@@ -39,11 +39,9 @@ function parseCategories(txt) {
     line = line.trim();
     if (!line) continue;
     if (!line.startsWith('<')) {
-      // New category
       currentCat = line;
       cats[currentCat] = [];
     } else if (currentCat) {
-      // Add embed to current category
       cats[currentCat].push(line);
     }
   }
@@ -120,9 +118,9 @@ async function renderListingsAndLoadAirbnbScript() {
 function renderListings() {
   const container = document.getElementById('listings');
   container.innerHTML = '';
-  let globalIdx = 0; // unique idx for each listing across all categories
-
-  Object.entries(categories).forEach(([cat, embeds]) => {
+  let globalIdx = 0;
+  const catEntries = Object.entries(categories);
+  catEntries.forEach(([cat, embeds], catIdx) => {
     // Category header
     const catHeader = document.createElement('h2');
     catHeader.textContent = cat;
@@ -144,11 +142,17 @@ function renderListings() {
       });
       globalIdx++;
     });
+
+    // Add separator after each category except the last
+    if (catIdx < catEntries.length - 1) {
+      const hr = document.createElement('hr');
+      hr.style.margin = '2em 0';
+      container.appendChild(hr);
+    }
   });
 }
 
 function renderVoteControls(cat, embedIdx, globalIdx) {
-  // Use globalIdx to keep votes unique across all listings
   const user = document.getElementById('userSelect').value;
   if (!votes[user]) votes[user] = {};
   const voteKey = `${cat}__${embedIdx}`;
@@ -184,7 +188,6 @@ async function handleVote(cat, embedIdx, globalIdx, value) {
   await renderListingsAndLoadAirbnbScript();
 }
 
-// Re-render listings on user change
 document.getElementById('userSelect').addEventListener('change', renderListingsAndLoadAirbnbScript);
 
 init();
