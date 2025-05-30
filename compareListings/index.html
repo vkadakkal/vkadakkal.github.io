@@ -47,6 +47,9 @@
     <h2>Airbnb Listings</h2>
     <div id="embeds"></div>
   </div>
+
+  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
+  
   <script>
     let API_KEY = '';
     let BIN_ID = '';
@@ -194,6 +197,5 @@
       return rated.reduce((a,b) => a+b, 0) / rated.length;
     }
   </script>
-  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 </body>
 </html>
