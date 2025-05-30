@@ -121,8 +121,9 @@ function renderListings() {
   let globalIdx = 0;
   const catEntries = Object.entries(categories);
   catEntries.forEach(([cat, embeds], catIdx) => {
-    // Category header
+    // Category header (sticky)
     const catHeader = document.createElement('h2');
+    catHeader.className = 'category-header';
     catHeader.textContent = cat;
     container.appendChild(catHeader);
 
@@ -146,7 +147,7 @@ function renderListings() {
     // Add separator after each category except the last
     if (catIdx < catEntries.length - 1) {
       const hr = document.createElement('hr');
-      hr.style.margin = '2em 0';
+      hr.className = 'category-separator';
       container.appendChild(hr);
     }
   });
