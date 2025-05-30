@@ -2,11 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Airbnb Embeds with JSONBin Voting</title>
+  <title>Airbnb Embeds with User Ratings (1–5)</title>
   <style>
     .embed-row { margin-bottom: 40px; }
-    .rank-buttons { margin: 10px 0; }
-    button[disabled] { opacity: 0.6; }
+    .user-rating-row { margin: 8px 0; }
+    .star {
+      font-size: 1.5em;
+      color: #ccc;
+      cursor: pointer;
+      transition: color 0.2s;
+      border: none;
+      background: none;
+      padding: 0 2px;
+    }
+    .star.selected, .star:hover, .star.selected ~ .star {
+      color: #ffb400;
+    }
+    .username {
+      display: inline-block;
+      width: 70px;
+      font-weight: bold;
+    }
+    .votes-summary {
+      margin-top: 5px;
+      font-size: 0.95em;
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -15,9 +36,9 @@
     <div id="embeds"></div>
   </div>
   <script>
-    // Replace these with your values
-    const API_KEY = '$2a$10$F71JVe.NcK4dd9SWiwm/YeIVSY4JvtHESddyxostQVlwgUTpdVU5S';
-    const BIN_ID = '68393c8f8561e97a501d5c1a';
+    // Replace with your JSONBin API key and bin ID
+    const API_KEY = 'YOUR_API_KEY';
+    const BIN_ID = 'YOUR_BIN_ID';
     const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
     let users = [];
@@ -31,13 +52,14 @@
       fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } })
         .then(r => r.json())
         .then(data => data?.record?.rankings || [])
-        .catch(() => []) // Fallback if bin doesn’t exist
+        .catch(() => [])
     ]).then(([usersText, embedsText, savedRankings]) => {
       users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
       embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
+      // rankings[listing][user] = number (0-5)
       rankings = savedRankings.length === embeds.length 
         ? savedRankings 
-        : embeds.map(() => Array(users.length).fill(false));
+        : embeds.map(() => Array(users.length).fill(0));
       renderEmbeds();
     });
 
@@ -49,25 +71,39 @@
         div.className = "embed-row";
         div.innerHTML = embedHtml;
 
-        const rankDiv = document.createElement('div');
-        rankDiv.className = "rank-buttons";
-        rankDiv.innerHTML =
-          users.map((user, userIdx) =>
-            `<button id="rank-btn-${idx}-${userIdx}" onclick="rank(${idx},${userIdx})" ${rankings[idx][userIdx] ? 'disabled' : ''}>
-              ${user} ${rankings[idx][userIdx] ? '✔️' : 'Rank'}
-            </button>`
-          ).join(' ') +
-          ` <span id="votes-${idx}">Votes: ${rankings[idx].filter(Boolean).length}</span>`;
-        div.appendChild(rankDiv);
+        // User rating rows
+        users.forEach((user, userIdx) => {
+          const row = document.createElement('div');
+          row.className = 'user-rating-row';
+          row.innerHTML = `<span class="username">${user}:</span> ` +
+            [1,2,3,4,5].map(star =>
+              `<button class="star${rankings[idx][userIdx] >= star ? ' selected' : ''}" 
+                onclick="rate(${idx},${userIdx},${star})"
+                title="${star} star${star>1?'s':''}">
+                &#9733;
+              </button>`
+            ).join(' ') +
+            `<span id="user-rating-${idx}-${userIdx}" style="margin-left:10px;">${rankings[idx][userIdx] ? rankings[idx][userIdx] + '★' : ''}</span>`;
+          div.appendChild(row);
+        });
+
+        // Votes summary
+        const avg = averageRating(rankings[idx]);
+        const summary = document.createElement('div');
+        summary.className = "votes-summary";
+        summary.id = `votes-${idx}`;
+        summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
+        div.appendChild(summary);
+
         container.appendChild(div);
       });
     }
 
-    // Update JSONBin.io on rank
-    window.rank = async function(listingIdx, userIdx) {
-      rankings[listingIdx][userIdx] = true;
-      updateButtonsAndVotes(listingIdx);
-      
+    // Update JSONBin.io on rate
+    window.rate = async function(listingIdx, userIdx, stars) {
+      rankings[listingIdx][userIdx] = stars;
+      updateStars(listingIdx, userIdx);
+      updateVotesSummary(listingIdx);
       try {
         await fetch(API_URL, {
           method: 'PUT',
@@ -82,18 +118,27 @@
       }
     };
 
-    function updateButtonsAndVotes(listingIdx) {
-      users.forEach((user, u) => {
-        const btn = document.getElementById(`rank-btn-${listingIdx}-${u}`);
-        if (btn) {
-          btn.disabled = rankings[listingIdx][u];
-          btn.innerHTML = `${user} ${rankings[listingIdx][u] ? '✔️' : 'Rank'}`;
-        }
-      });
-      document.getElementById(`votes-${listingIdx}`).textContent = 
-        `Votes: ${rankings[listingIdx].filter(Boolean).length}`;
+    function updateStars(listingIdx, userIdx) {
+      for (let star = 1; star <= 5; ++star) {
+        const btns = document.querySelectorAll(
+          `#user-rating-${listingIdx}-${userIdx} ~ .star, #user-rating-${listingIdx}-${userIdx} .star`
+        );
+        // Instead, let's just re-render the whole embed (simpler and safer)
+      }
+      // Safer: re-render the whole embeds
+      renderEmbeds();
+    }
+
+    function updateVotesSummary(listingIdx) {
+      const avg = averageRating(rankings[listingIdx]);
+      const summary = document.getElementById(`votes-${listingIdx}`);
+      if (summary) summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
+    }
+
+    function averageRating(arr) {
+      const rated = arr.filter(x => x > 0);
+      if (rated.length === 0) return 0;
+      return rated.reduce((a,b) => a+b, 0) / rated.length;
     }
   </script>
-  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
-</body>
-</html>
+  <
