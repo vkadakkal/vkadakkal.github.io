@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Airbnb Embeds from urls.txt</title>
+  <title>Airbnb Embeds with Ranking</title>
   <style>
     .embed-row { margin-bottom: 40px; }
+    .rank-buttons { margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -13,19 +14,60 @@
     <div id="embeds"></div>
   </div>
   <script>
+    const userCount = 4;
+    let rankings = []; // Array of arrays: rankings[listingIdx][userIdx] = true/false
+
     fetch('urls.txt')
       .then(response => response.text())
       .then(text => {
         const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-        const container = document.getElementById('embeds');
-        lines.forEach(line => {
-          const div = document.createElement('div');
-          div.className = "embed-row";
-          div.innerHTML = line;
-          container.appendChild(div);
-        });
+        rankings = lines.map(() => Array(userCount).fill(false));
+        renderEmbeds(lines);
       });
+
+    function renderEmbeds(lines) {
+      const container = document.getElementById('embeds');
+      container.innerHTML = '';
+      lines.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = "embed-row";
+        // Add Airbnb embed
+        div.innerHTML = line;
+
+        // Add ranking buttons
+        const rankDiv = document.createElement('div');
+        rankDiv.className = "rank-buttons";
+        rankDiv.innerHTML =
+          Array.from({length: userCount}).map((_, userIdx) =>
+            `<button id="rank-btn-${idx}-${userIdx}" onclick="rank(${idx},${userIdx})" ${rankings[idx][userIdx] ? 'disabled' : ''}>
+              User ${userIdx+1} ${rankings[idx][userIdx] ? '✔️' : 'Rank'}
+            </button>`
+          ).join(' ') +
+          ` <span id="votes-${idx}">Votes: ${rankings[idx].filter(Boolean).length}</span>`;
+        div.appendChild(rankDiv);
+
+        container.appendChild(div);
+      });
+    }
+
+    // Expose rank function globally
+    window.rank = function(listingIdx, userIdx) {
+      rankings[listingIdx][userIdx] = true;
+      // Update only the buttons and vote count for this embed
+      for (let u = 0; u < userCount; ++u) {
+        const btn = document.getElementById(`rank-btn-${listingIdx}-${u}`);
+        if (btn) {
+          btn.disabled = rankings[listingIdx][u];
+          btn.innerHTML = `User ${u+1} ${rankings[listingIdx][u] ? '✔️' : 'Rank'}`;
+        }
+      }
+      // Update vote count
+      const votes = rankings[listingIdx].filter(Boolean).length;
+      document.getElementById(`votes-${listingIdx}`).textContent = `Votes: ${votes}`;
+    };
   </script>
+  <!-- Only include the Airbnb embed script ONCE for all embeds -->
+  <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 
 <div class="airbnb-embed-frame" data-id="49244019" data-view="home" data-hide-price="true" style="width: 450px; height: 300px; margin: auto;"><a href="https://www.airbnb.com/rooms/49244019?check_in=2025-10-21&amp;check_out=2025-10-23&amp;guests=1&amp;adults=2&amp;children=2&amp;s=66&amp;source=embed_widget">View On Airbnb</a><a href="https://www.airbnb.com/rooms/49244019?check_in=2025-10-21&amp;check_out=2025-10-23&amp;guests=1&amp;adults=2&amp;children=2&amp;s=66&amp;source=embed_widget" rel="nofollow">cycladic house in Vothonas · ★4.98 · 2 bedrooms · 3 beds · 2 baths</a><script async="" src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script></div>
   
