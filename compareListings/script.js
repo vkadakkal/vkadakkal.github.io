@@ -25,7 +25,7 @@ async function init() {
     ]);
     populateUsers();
     await loadVotes();
-    renderListings();
+    await renderListingsAndLoadAirbnbScript();
   } catch (e) {
     setStatus('Error: ' + e.message);
   }
@@ -79,6 +79,26 @@ async function saveVotes() {
   }
 }
 
+async function renderListingsAndLoadAirbnbScript() {
+  renderListings();
+  // Remove any previous Airbnb embed script
+  const oldScript = document.getElementById('airbnb-embed-script');
+  if (oldScript) oldScript.remove();
+
+  // Dynamically load the Airbnb embed script
+  const script = document.createElement('script');
+  script.id = 'airbnb-embed-script';
+  script.src = 'https://www.airbnb.com/embeddable/airbnb_jssdk';
+  script.async = true;
+  script.onload = () => {
+    // Call init after script loads and DOM is updated
+    if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
+      window.AirbnbEmbedFrame.init();
+    }
+  };
+  document.body.appendChild(script);
+}
+
 function renderListings() {
   const container = document.getElementById('listings');
   container.innerHTML = '';
@@ -98,13 +118,6 @@ function renderListings() {
       radio.addEventListener('change', () => handleVote(idx, radio.value));
     });
   });
-  // Airbnb embed loader (required after dynamic insert)
-  // Wait a tick to ensure DOM is updated
-  setTimeout(() => {
-    if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
-      window.AirbnbEmbedFrame.init();
-    }
-  }, 0);
 }
 
 function renderVoteControls(listingIdx) {
@@ -137,11 +150,11 @@ async function handleVote(listingIdx, value) {
   const user = document.getElementById('userSelect').value;
   if (!votes[user]) votes[user] = {};
   votes[user][listingIdx] = Number(value);
-  renderListings();
   await saveVotes();
+  await renderListingsAndLoadAirbnbScript(); // Re-render and reload script so embeds are refreshed
 }
 
 // Re-render listings on user change
-document.getElementById('userSelect').addEventListener('change', renderListings);
+document.getElementById('userSelect').addEventListener('change', renderListingsAndLoadAirbnbScript);
 
 init();
