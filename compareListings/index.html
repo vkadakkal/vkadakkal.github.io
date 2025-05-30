@@ -64,22 +64,7 @@
       statusDiv.className = type;
     }
 
-    // Fetch API_KEY, ACCESS_KEY, and BIN_ID first, then proceed
-    Promise.all([
-      fetch('API_KEY.txt').then(apiKeyResponse => apiKeyResponse.text()),
-      fetch('ACCESS_KEY.txt').then(accessKeyResponse => accessKeyResponse.text()),
-      fetch('BIN_ID.txt').then(binIdResponse => binIdResponse.text())
-    ]).then(([apiKeyText, accessKeyText, binIdText]) => {
-      API_KEY = apiKeyText.trim();
-      ACCESS_KEY = accessKeyText.trim();
-      BIN_ID = binIdText.trim();
-      API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-      setStatus("Loading data from JSONBin…", "loading");
-      startApp();
-    });
-
     function getHeaders() {
-      // Always include both keys if present
       const headers = {
         'Content-Type': 'application/json',
         'X-Master-Key': API_KEY
@@ -90,7 +75,84 @@
       return headers;
     }
 
-    function startApp() {
+    function averageRating(arr) {
+      const rated = arr.filter(x => x > 0);
+      if (rated.length === 0) return 0;
+      return rated.reduce((a,b) => a+b, 0) / rated.length;
+    }
+
+    // Update JSONBin.io on rate only if a new vote is registered
+    window.rate = async function(listingId, user, stars) {
+      const idx = rankings.findIndex(r => r.listing_id === listingId);
+      if (idx === -1) return;
+      const previousVote = rankings[idx].votes[user] || 0;
+      if (previousVote === stars) {
+        setStatus("No change: vote is the same as before.", "success");
+        return;
+      }
+      rankings[idx].votes[user] = stars;
+
+      // Render embeds directly here
+      const container = document.getElementById('embeds');
+      container.innerHTML = '';
+      embeds.forEach((embedHtml, i) => {
+        const div = document.createElement('div');
+        div.className = "embed-row";
+        div.innerHTML = embedHtml;
+        users.forEach((u, userIdx) => {
+          const row = document.createElement('div');
+          row.className = 'user-rating-row';
+          const userVote = rankings[i].votes[u] || 0;
+          row.innerHTML = `<span class="username">${u}:</span> ` +
+            [1,2,3,4,5].map(star =>
+              `<button class="star${userVote >= star ? ' selected' : ''}" 
+                onclick="rate('${rankings[i].listing_id}','${u}',${star})"
+                title="${star} star${star>1?'s':''}">
+                &#9733;
+              </button>`
+            ).join(' ') +
+            `<span id="user-rating-${i}-${userIdx}" style="margin-left:10px;">${userVote ? userVote + '★' : ''}</span>`;
+          div.appendChild(row);
+        });
+        const avg = averageRating(Object.values(rankings[i].votes));
+        const summary = document.createElement('div');
+        summary.className = "votes-summary";
+        summary.id = `votes-${i}`;
+        summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
+        div.appendChild(summary);
+        container.appendChild(div);
+      });
+
+      setStatus("Saving vote to JSONBin…", "loading");
+      try {
+        const response = await fetch(API_URL, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify({ rankings })
+        });
+        if (response.ok) {
+          setStatus(`Vote saved! (status ${response.status} ${response.statusText})`, "success");
+        } else {
+          setStatus(`Error saving vote (status ${response.status} ${response.statusText})`, "error");
+        }
+      } catch (err) {
+        setStatus("Failed to save rankings to JSONBin.io", "error");
+        console.error('Failed to save rankings:', err);
+      }
+    };
+
+    // Main app start
+    Promise.all([
+      fetch('API_KEY.txt').then(apiKeyResponse => apiKeyResponse.text()),
+      fetch('ACCESS_KEY.txt').then(accessKeyResponse => accessKeyResponse.text()),
+      fetch('BIN_ID.txt').then(binIdResponse => binIdResponse.text())
+    ]).then(([apiKeyText, accessKeyText, binIdText]) => {
+      API_KEY = apiKeyText.trim();
+      ACCESS_KEY = accessKeyText.trim();
+      BIN_ID = binIdText.trim();
+      API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+      setStatus("Loading data from JSONBin…", "loading");
+
       Promise.all([
         fetch('users.txt').then(usersResponse => usersResponse.text()),
         fetch('urls.txt').then(urlsResponse => urlsResponse.text()),
@@ -117,7 +179,6 @@
 
         // Build rankings array: one object per listing
         rankings = listingIds.map((listingId, idx) => {
-          // Try to find existing ranking for this listing
           const existing = savedRankings.find(r => r.listing_id === listingId);
           let votes = {};
           users.forEach(user => {
@@ -129,82 +190,39 @@
         });
 
         setStatus("Loaded all data successfully.", "success");
-        renderEmbeds();
-      });
-    }
 
-    function renderEmbeds() {
-      const container = document.getElementById('embeds');
-      container.innerHTML = '';
-      embeds.forEach((embedHtml, idx) => {
-        const div = document.createElement('div');
-        div.className = "embed-row";
-        div.innerHTML = embedHtml;
-
-        // User rating rows
-        users.forEach((user, userIdx) => {
-          const row = document.createElement('div');
-          row.className = 'user-rating-row';
-          const userVote = rankings[idx].votes[user] || 0;
-          row.innerHTML = `<span class="username">${user}:</span> ` +
-            [1,2,3,4,5].map(star =>
-              `<button class="star${userVote >= star ? ' selected' : ''}" 
-                onclick="rate('${rankings[idx].listing_id}','${user}',${star})"
-                title="${star} star${star>1?'s':''}">
-                &#9733;
-              </button>`
-            ).join(' ') +
-            `<span id="user-rating-${idx}-${userIdx}" style="margin-left:10px;">${userVote ? userVote + '★' : ''}</span>`;
-          div.appendChild(row);
+        // Render embeds directly here
+        const container = document.getElementById('embeds');
+        container.innerHTML = '';
+        embeds.forEach((embedHtml, i) => {
+          const div = document.createElement('div');
+          div.className = "embed-row";
+          div.innerHTML = embedHtml;
+          users.forEach((u, userIdx) => {
+            const row = document.createElement('div');
+            row.className = 'user-rating-row';
+            const userVote = rankings[i].votes[u] || 0;
+            row.innerHTML = `<span class="username">${u}:</span> ` +
+              [1,2,3,4,5].map(star =>
+                `<button class="star${userVote >= star ? ' selected' : ''}" 
+                  onclick="rate('${rankings[i].listing_id}','${u}',${star})"
+                  title="${star} star${star>1?'s':''}">
+                  &#9733;
+                </button>`
+              ).join(' ') +
+              `<span id="user-rating-${i}-${userIdx}" style="margin-left:10px;">${userVote ? userVote + '★' : ''}</span>`;
+            div.appendChild(row);
+          });
+          const avg = averageRating(Object.values(rankings[i].votes));
+          const summary = document.createElement('div');
+          summary.className = "votes-summary";
+          summary.id = `votes-${i}`;
+          summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
+          div.appendChild(summary);
+          container.appendChild(div);
         });
-
-        // Votes summary
-        const avg = averageRating(Object.values(rankings[idx].votes));
-        const summary = document.createElement('div');
-        summary.className = "votes-summary";
-        summary.id = `votes-${idx}`;
-        summary.textContent = `Average rating: ${avg > 0 ? avg.toFixed(2) : 'N/A'}`;
-        div.appendChild(summary);
-
-        container.appendChild(div);
       });
-    }
-
-    // Update JSONBin.io on rate only if a new vote is registered
-    window.rate = async function(listingId, user, stars) {
-      // Find the index for this listing
-      const idx = rankings.findIndex(r => r.listing_id === listingId);
-      if (idx === -1) return;
-      const previousVote = rankings[idx].votes[user] || 0;
-      if (previousVote === stars) {
-        setStatus("No change: vote is the same as before.", "success");
-        return; // Do not update if vote is unchanged
-      }
-      rankings[idx].votes[user] = stars;
-      renderEmbeds();
-      setStatus("Saving vote to JSONBin…", "loading");
-      try {
-        const response = await fetch(API_URL, {
-          method: 'PUT',
-          headers: getHeaders(),
-          body: JSON.stringify({ rankings })
-        });
-        if (response.ok) {
-          setStatus(`Vote saved! (status ${response.status} ${response.statusText})`, "success");
-        } else {
-          setStatus(`Error saving vote (status ${response.status} ${response.statusText})`, "error");
-        }
-      } catch (err) {
-        setStatus("Failed to save rankings to JSONBin.io", "error");
-        console.error('Failed to save rankings:', err);
-      }
-    };
-
-    function averageRating(arr) {
-      const rated = arr.filter(x => x > 0);
-      if (rated.length === 0) return 0;
-      return rated.reduce((a,b) => a+b, 0) / rated.length;
-    }
+    });
   </script>
   <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
 </body>
