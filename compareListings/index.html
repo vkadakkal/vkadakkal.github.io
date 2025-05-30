@@ -6,6 +6,7 @@
   <style>
     .embed-row { margin-bottom: 40px; }
     .rank-buttons { margin: 10px 0; }
+    button[disabled] { opacity: 0.6; }
   </style>
 </head>
 <body>
@@ -20,8 +21,8 @@
 
     // Load users and embeds, then render
     Promise.all([
-      fetch('users.txt').then(r => r.text()),
-      fetch('urls.txt').then(r => r.text())
+      fetch('users.txt').then(usersResponse => usersResponse.text()),
+      fetch('urls.txt').then(urlsResponse => urlsResponse.text())
     ]).then(([usersText, embedsText]) => {
       users = usersText.split('\n').map(u => u.trim()).filter(Boolean);
       embeds = embedsText.split('\n').map(line => line.trim()).filter(Boolean);
@@ -72,9 +73,5 @@
   </script>
   <!-- Only include the Airbnb embed script ONCE for all embeds -->
   <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
-
-
-<div class="airbnb-embed-frame" data-id="49244019" data-view="home" data-hide-price="true" style="width: 450px; height: 300px; margin: auto;"><a href="https://www.airbnb.com/rooms/49244019?check_in=2025-10-21&amp;check_out=2025-10-23&amp;guests=1&amp;adults=2&amp;children=2&amp;s=66&amp;source=embed_widget">View On Airbnb</a><a href="https://www.airbnb.com/rooms/49244019?check_in=2025-10-21&amp;check_out=2025-10-23&amp;guests=1&amp;adults=2&amp;children=2&amp;s=66&amp;source=embed_widget" rel="nofollow">cycladic house in Vothonas · ★4.98 · 2 bedrooms · 3 beds · 2 baths</a><script async="" src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script></div>
-  
 </body>
 </html>
