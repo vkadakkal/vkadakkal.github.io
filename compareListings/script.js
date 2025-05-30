@@ -9,17 +9,17 @@ function setStatus(msg) {
 }
 
 let users = [];
-let urls = [];
+let categories = {}; // { category: [embedDiv, ...] }
 let accessKey = '';
 let binId = '';
-let votes = {};
+let votes = {}; // { user: { category|listingIdx: vote } }
 
 async function init() {
   try {
     setStatus('Loading configuration...');
-    [users, urls, accessKey, binId] = await Promise.all([
+    [users, categories, accessKey, binId] = await Promise.all([
       fetchTextFile('users.txt').then(txt => txt.trim().split('\n').filter(Boolean)),
-      fetchTextFile('urls.txt').then(txt => txt.trim().split('\n').filter(Boolean)),
+      fetchTextFile('urls.txt').then(parseCategories),
       fetchTextFile('ACCESS_KEY.txt').then(txt => txt.trim()),
       fetchTextFile('BIN_ID.txt').then(txt => txt.trim())
     ]);
@@ -29,6 +29,25 @@ async function init() {
   } catch (e) {
     setStatus('Error: ' + e.message);
   }
+}
+
+function parseCategories(txt) {
+  const lines = txt.trim().split('\n');
+  const cats = {};
+  let currentCat = null;
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    if (!line.startsWith('<')) {
+      // New category
+      currentCat = line;
+      cats[currentCat] = [];
+    } else if (currentCat) {
+      // Add embed to current category
+      cats[currentCat].push(line);
+    }
+  }
+  return cats;
 }
 
 function populateUsers() {
@@ -91,7 +110,6 @@ async function renderListingsAndLoadAirbnbScript() {
   script.src = 'https://www.airbnb.com/embeddable/airbnb_jssdk';
   script.async = true;
   script.onload = () => {
-    // Call init after script loads and DOM is updated
     if (window.AirbnbEmbedFrame && typeof window.AirbnbEmbedFrame.init === 'function') {
       window.AirbnbEmbedFrame.init();
     }
@@ -102,39 +120,50 @@ async function renderListingsAndLoadAirbnbScript() {
 function renderListings() {
   const container = document.getElementById('listings');
   container.innerHTML = '';
-  urls.forEach((divTag, idx) => {
-    const listingDiv = document.createElement('div');
-    listingDiv.className = 'listing';
-    // Insert Airbnb embed HTML
-    listingDiv.innerHTML = `<div class="embed">${divTag}</div>`;
-    // Voting controls
-    const voteDiv = document.createElement('div');
-    voteDiv.className = 'votes';
-    voteDiv.innerHTML = renderVoteControls(idx);
-    listingDiv.appendChild(voteDiv);
-    container.appendChild(listingDiv);
-    // Add event listeners for voting
-    voteDiv.querySelectorAll('input[type=radio]').forEach(radio => {
-      radio.addEventListener('change', () => handleVote(idx, radio.value));
+  let globalIdx = 0; // unique idx for each listing across all categories
+
+  Object.entries(categories).forEach(([cat, embeds]) => {
+    // Category header
+    const catHeader = document.createElement('h2');
+    catHeader.textContent = cat;
+    container.appendChild(catHeader);
+
+    embeds.forEach((embedDiv, embedIdx) => {
+      const listingDiv = document.createElement('div');
+      listingDiv.className = 'listing';
+      listingDiv.innerHTML = `<div class="embed">${embedDiv}</div>`;
+      // Voting controls
+      const voteDiv = document.createElement('div');
+      voteDiv.className = 'votes';
+      voteDiv.innerHTML = renderVoteControls(cat, embedIdx, globalIdx);
+      listingDiv.appendChild(voteDiv);
+      container.appendChild(listingDiv);
+      // Add event listeners for voting
+      voteDiv.querySelectorAll('input[type=radio]').forEach(radio => {
+        radio.addEventListener('change', () => handleVote(cat, embedIdx, globalIdx, radio.value));
+      });
+      globalIdx++;
     });
   });
 }
 
-function renderVoteControls(listingIdx) {
+function renderVoteControls(cat, embedIdx, globalIdx) {
+  // Use globalIdx to keep votes unique across all listings
   const user = document.getElementById('userSelect').value;
-  const userVotes = votes[user] || {};
-  const currentVote = userVotes[listingIdx] || 0;
+  if (!votes[user]) votes[user] = {};
+  const voteKey = `${cat}__${embedIdx}`;
+  const currentVote = votes[user][voteKey] || 0;
   let html = 'Your rating: ';
   for (let i = 1; i <= 5; i++) {
     html += `<label>
-      <input type="radio" name="vote_${listingIdx}" value="${i}" ${currentVote == i ? 'checked' : ''}> ${i}
+      <input type="radio" name="vote_${cat}_${embedIdx}" value="${i}" ${currentVote == i ? 'checked' : ''}> ${i}
     </label> `;
   }
   // Show average
   let sum = 0, count = 0;
   for (const u of users) {
-    if (votes[u] && votes[u][listingIdx]) {
-      sum += Number(votes[u][listingIdx]);
+    if (votes[u] && votes[u][voteKey]) {
+      sum += Number(votes[u][voteKey]);
       count++;
     }
   }
@@ -146,12 +175,13 @@ function renderVoteControls(listingIdx) {
   return html;
 }
 
-async function handleVote(listingIdx, value) {
+async function handleVote(cat, embedIdx, globalIdx, value) {
   const user = document.getElementById('userSelect').value;
   if (!votes[user]) votes[user] = {};
-  votes[user][listingIdx] = Number(value);
+  const voteKey = `${cat}__${embedIdx}`;
+  votes[user][voteKey] = Number(value);
   await saveVotes();
-  await renderListingsAndLoadAirbnbScript(); // Re-render and reload script so embeds are refreshed
+  await renderListingsAndLoadAirbnbScript();
 }
 
 // Re-render listings on user change
