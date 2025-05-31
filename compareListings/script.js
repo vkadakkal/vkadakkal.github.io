@@ -97,6 +97,16 @@ async function saveVotes() {
   }
 }
 
+// Extract the first href from the embed HTML (for the canonical link)
+function extractFirstLink(embedHtml) {
+  const match = embedHtml.match(/href="([^"]+)"/i);
+  if (match) {
+    // Decode HTML entities
+    return match[1].replace(/&amp;/g, '&');
+  }
+  return null;
+}
+
 async function renderListingsAndLoadAirbnbScript() {
   renderListings();
   // Remove any previous Airbnb embed script
@@ -134,12 +144,23 @@ function renderListings() {
       const listingDiv = document.createElement('div');
       listingDiv.className = 'listing';
       listingDiv.innerHTML = `<div class="embed">${embedDiv}</div>`;
+
+      // Extract and show the original link
+      const fullLink = extractFirstLink(embedDiv);
+      if (fullLink) {
+        const linkDiv = document.createElement('div');
+        linkDiv.className = 'direct-link';
+        linkDiv.innerHTML = `<a href="${fullLink}" target="_blank">Direct link: ${fullLink}</a>`;
+        listingDiv.appendChild(linkDiv);
+      }
+
       // Voting controls
       const voteDiv = document.createElement('div');
       voteDiv.className = 'votes';
       voteDiv.innerHTML = renderVoteControls(cat, embedIdx, globalIdx);
       listingDiv.appendChild(voteDiv);
       container.appendChild(listingDiv);
+
       // Add event listeners for voting
       voteDiv.querySelectorAll('input[type=radio]').forEach(radio => {
         radio.addEventListener('change', () => handleVote(cat, embedIdx, globalIdx, radio.value));
@@ -148,80 +169,4 @@ function renderListings() {
     });
 
     // Add separator after each category except the last
-    if (catIdx < catEntries.length - 1) {
-      const hr = document.createElement('hr');
-      hr.className = 'category-separator';
-      container.appendChild(hr);
-    }
-  });
-}
-
-function renderVoteControls(cat, embedIdx, globalIdx) {
-  const user = document.getElementById('userSelect').value;
-  if (!votes[user]) votes[user] = {};
-  const voteKey = `${cat}__${embedIdx}`;
-  const currentVote = votes[user][voteKey] || 0;
-  let html = 'Your rating: ';
-  for (let i = 1; i <= 5; i++) {
-    html += `<label>
-      <input type="radio" name="vote_${cat}_${embedIdx}" value="${i}" ${currentVote == i ? 'checked' : ''}> ${i}
-    </label> `;
-  }
-  // Show average
-  let sum = 0, count = 0;
-  for (const u of users) {
-    if (votes[u] && votes[u][voteKey]) {
-      sum += Number(votes[u][voteKey]);
-      count++;
-    }
-  }
-  if (count) {
-    html += ` | <strong>Average: ${(sum/count).toFixed(2)}</strong> (${count} votes)`;
-  } else {
-    html += ` | <strong>No votes yet</strong>`;
-  }
-  return html;
-}
-
-async function handleVote(cat, embedIdx, globalIdx, value) {
-  const user = document.getElementById('userSelect').value;
-  if (!votes[user]) votes[user] = {};
-  const voteKey = `${cat}__${embedIdx}`;
-  votes[user][voteKey] = Number(value);
-  await saveVotes();
-  await renderListingsAndLoadAirbnbScript();
-}
-
-// Scrollspy logic for sticky header
-function setupCategoryScrollSpy() {
-  const header = document.getElementById('fixed-category-header');
-  const catHeaders = Array.from(document.querySelectorAll('.category-header'));
-  if (!catHeaders.length) {
-    header.textContent = '';
-    return;
-  }
-
-  function updateHeader() {
-    let current = catHeaders[0];
-    for (let i = 0; i < catHeaders.length; i++) {
-      const rect = catHeaders[i].getBoundingClientRect();
-      if (rect.top - 10 <= 0) {
-        current = catHeaders[i];
-      } else {
-        break;
-      }
-    }
-    header.textContent = current.textContent;
-    header.style.opacity = 1;
-  }
-
-  // Initial set
-  updateHeader();
-
-  window.removeEventListener('scroll', updateHeader);
-  window.addEventListener('scroll', updateHeader, { passive: true });
-}
-
-document.getElementById('userSelect').addEventListener('change', renderListingsAndLoadAirbnbScript);
-
-init();
+    if (catIdx < catEntries.length -
