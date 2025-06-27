@@ -1,1 +1,487 @@
-Hi
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Step Tracker</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-bg: #1e1e1e;
+            --text-light: #e0e0e0;
+            --accent: #bb86fc;
+            --border-radius: 10px;
+            --row-even: #2a2a2a;
+            --row-odd: #242424;
+        }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            color: var(--accent);
+            text-align: center;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .scroll-notice {
+            color: #aaa;
+            font-size: 0.9rem;
+            padding: 8px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 600px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border: 1px solid #3a3a3a;
+        }
+        
+        th {
+            background-color: #252525;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--row-even);
+        }
+        
+        tr:nth-child(odd) {
+            background-color: var(--row-odd);
+        }
+        
+        tr:hover {
+            background-color: #333;
+        }
+        
+        .editable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .editable:hover {
+            background-color: #2c2c2c;
+        }
+        
+        .editable:focus {
+            outline: 2px solid var(--accent);
+            background-color: #2a2a2a;
+        }
+        
+        .leaderboard tr:first-child {
+            background-color: #3d2800;
+            color: gold;
+            font-weight: bold;
+        }
+        
+        .leaderboard tr:nth-child(2) {
+            background-color: #2a2a2a;
+            color: silver;
+        }
+        
+        .leaderboard tr:nth-child(3) {
+            background-color: #322100;
+            color: #cd7f32;
+        }
+        
+        button {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+            margin: 20px auto;
+            transition: opacity 0.3s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        .error {
+            color: #ff5555;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .scroll-notice {
+                display: block;
+            }
+            
+            body {
+                padding: 10px;
+            }
+            
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Step Tracker</h1>
+    
+    <div class="error" id="name-error">User name already exists!</div>
+    
+    <h2>Leaderboard</h2>
+    <div class="table-container">
+        <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
+        <table id="leaderboard" class="leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Total Steps</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Leaderboard rows will be populated here -->
+            </tbody>
+        </table>
+    </div>
+    
+    <h2>Daily Steps</h2>
+    <div class="table-container">
+        <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
+        <table id="steps-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <!-- Dates will be populated here -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Steps data will be populated here -->
+            </tbody>
+        </table>
+    </div>
+    
+    <button id="save-btn">Save Data to JSON</button>
+    
+    <script>
+        // Circular buffer implementation
+        class CircularBuffer {
+            constructor(size) {
+                this.buffer = new Array(size).fill(0);
+                this.pointer = 0;
+                this.size = size;
+            }
+            
+            push(value) {
+                this.buffer[this.pointer] = value;
+                this.pointer = (this.pointer + 1) % this.size;
+            }
+            
+            get(i) {
+                return this.buffer[(this.pointer + i) % this.size];
+            }
+            
+            set(i, value) {
+                this.buffer[(this.pointer + i) % this.size] = value;
+            }
+            
+            toArray() {
+                return [...this.buffer];
+            }
+        }
+        
+        // Main application
+        const app = {
+            users: [],
+            dates: [],
+            initialized: false,
+            
+            init() {
+                this.loadData();
+                this.updateDates();
+                this.render();
+                this.initialized = true;
+                
+                // Set up auto-save on edits
+                document.addEventListener('blur', this.handleEdit.bind(this), true);
+                document.getElementById('save-btn').addEventListener('click', this.saveToJSON.bind(this));
+                
+                // Check for new day every minute
+                setInterval(this.checkNewDay.bind(this), 60000);
+            },
+            
+            loadData() {
+                // Try to load from localStorage first
+                const savedData = localStorage.getItem('stepTrackerData');
+                
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    this.users = parsedData.users.map(u => ({
+                        ...u,
+                        steps: new CircularBuffer(14)
+                    }));
+                    
+                    // Restore circular buffer data
+                    this.users.forEach((user, i) => {
+                        user.steps.buffer = [...parsedData.users[i].steps.buffer];
+                        user.steps.pointer = parsedData.users[i].steps.pointer;
+                    });
+                    
+                    this.dates = parsedData.dates;
+                    return;
+                }
+                
+                // If no localStorage, try to load from steps.json
+                fetch('steps.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.users = data.users.map(u => ({
+                            ...u,
+                            steps: new CircularBuffer(14)
+                        }));
+                        
+                        this.users.forEach((user, i) => {
+                            user.steps.buffer = [...data.users[i].steps.buffer];
+                            user.steps.pointer = data.users[i].steps.pointer;
+                        });
+                        
+                        this.dates = data.dates;
+                        this.saveToLocalStorage();
+                    })
+                    .catch(() => {
+                        // If no data exists, initialize with default data
+                        this.initializeDefaultData();
+                    });
+            },
+            
+            initializeDefaultData() {
+                // Create initial dates (14 days)
+                const today = new Date();
+                for (let i = 13; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    this.dates.push(date.toISOString().split('T')[0]);
+                }
+                
+                // Create 3 default users
+                for (let i = 1; i <= 3; i++) {
+                    const stepsBuffer = new CircularBuffer(14);
+                    stepsBuffer.buffer.fill(1); // Initialize with 1 step per day
+                    
+                    this.users.push({
+                        id: Date.now() + i,
+                        name: `User ${i}`,
+                        steps: stepsBuffer
+                    });
+                }
+                
+                this.saveToLocalStorage();
+            },
+            
+            updateDates() {
+                const today = new Date().toISOString().split('T')[0];
+                const lastDate = this.dates[this.dates.length - 1];
+                
+                // Add new day if it's a new day
+                if (today !== lastDate) {
+                    this.dates.shift(); // Remove oldest date
+                    this.dates.push(today); // Add today
+                    
+                    // Add a new step entry (0) for all users
+                    this.users.forEach(user => {
+                        user.steps.push(0);
+                    });
+                }
+            },
+            
+            checkNewDay() {
+                const now = new Date();
+                if (now.getHours() === 0 && now.getMinutes() === 0) {
+                    this.updateDates();
+                    this.render();
+                }
+            },
+            
+            render() {
+                this.renderLeaderboard();
+                this.renderStepsTable();
+            },
+            
+            renderLeaderboard() {
+                const leaderboard = document.querySelector('#leaderboard tbody');
+                leaderboard.innerHTML = '';
+                
+                // Calculate total steps for each user
+                const usersWithTotals = this.users.map(user => ({
+                    ...user,
+                    totalSteps: user.steps.buffer.reduce((sum, steps) => sum + steps, 0)
+                }));
+                
+                // Sort by total steps descending
+                usersWithTotals.sort((a, b) => b.totalSteps - a.totalSteps);
+                
+                // Display top 3
+                usersWithTotals.slice(0, 3).forEach((user, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${user.name}</td>
+                        <td>${user.totalSteps}</td>
+                    `;
+                    leaderboard.appendChild(row);
+                });
+            },
+            
+            renderStepsTable() {
+                const table = document.getElementById('steps-table');
+                const thead = table.querySelector('thead tr');
+                const tbody = table.querySelector('tbody');
+                
+                // Clear existing columns (except user column)
+                while (thead.children.length > 1) {
+                    thead.removeChild(thead.lastChild);
+                }
+                
+                tbody.innerHTML = '';
+                
+                // Add date headers
+                this.dates.forEach(dateStr => {
+                    const date = new Date(dateStr);
+                    const formattedDate = date.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: '2-digit'
+                    });
+                    
+                    const th = document.createElement('th');
+                    th.textContent = formattedDate;
+                    thead.appendChild(th);
+                });
+                
+                // Add user rows
+                this.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    
+                    // User name cell (editable)
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = user.name;
+                    nameCell.classList.add('editable');
+                    nameCell.setAttribute('data-user-id', user.id);
+                    row.appendChild(nameCell);
+                    
+                    // Step cells (editable)
+                    for (let i = 0; i < 14; i++) {
+                        const stepCell = document.createElement('td');
+                        stepCell.textContent = user.steps.get(i);
+                        stepCell.classList.add('editable');
+                        stepCell.setAttribute('data-user-id', user.id);
+                        stepCell.setAttribute('data-day-index', i);
+                        row.appendChild(stepCell);
+                    }
+                    
+                    tbody.appendChild(row);
+                });
+            },
+            
+            handleEdit(event) {
+                if (!this.initialized) return;
+                
+                const target = event.target;
+                if (!target.classList.contains('editable')) return;
+                
+                const userId = target.getAttribute('data-user-id');
+                const user = this.users.find(u => u.id === parseInt(userId));
+                
+                if (!user) return;
+                
+                // Handle name edit
+                if (target.tagName === 'TD' && !target.hasAttribute('data-day-index')) {
+                    const newName = target.textContent.trim();
+                    
+                    // Check if name already exists
+                    const nameExists = this.users.some(u => 
+                        u.id !== user.id && u.name.toLowerCase() === newName.toLowerCase()
+                    );
+                    
+                    if (nameExists) {
+                        document.getElementById('name-error').style.display = 'block';
+                        target.textContent = user.name; // Revert to original name
+                        setTimeout(() => {
+                            document.getElementById('name-error').style.display = 'none';
+                        }, 3000);
+                        return;
+                    }
+                    
+                    user.name = newName;
+                } 
+                // Handle step edit
+                else if (target.hasAttribute('data-day-index')) {
+                    const dayIndex = parseInt(target.getAttribute('data-day-index'));
+                    const newSteps = parseInt(target.textContent) || 0;
+                    user.steps.set(dayIndex, newSteps);
+                }
+                
+                this.saveToLocalStorage();
+                this.renderLeaderboard();
+            },
+            
+            saveToLocalStorage() {
+                const data = {
+                    users: this.users.map(u => ({
+                        ...u,
+                        steps: {
+                            buffer: u.steps.buffer,
+                            pointer: u.steps.pointer
+                        }
+                    })),
+                    dates: this.dates
+                };
+                
+                localStorage.setItem('stepTrackerData', JSON.stringify(data));
+            },
+            
+            saveToJSON() {
+                this.saveToLocalStorage();
+                const data = JSON.parse(localStorage.getItem('stepTrackerData'));
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], {type: 'application/json'});
+                
+                // Create download link
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'steps.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        };
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
