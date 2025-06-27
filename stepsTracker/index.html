@@ -118,15 +118,15 @@
             border-radius: 5px;
             text-align: center;
             display: none;
+            font-size: 1rem;
+            z-index: 999;
+            position: sticky;
+            top: 0;
         }
-        .status-banner.success {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .status-banner.error {
-            background-color: #f44336;
-            color: white;
-        }
+        .status-banner.success { background-color: #4CAF50; color: white; }
+        .status-banner.error { background-color: #f44336; color: white; }
+        .status-banner.info { background-color: #2196F3; color: white; }
+        .status-banner.warning { background-color: #ff9800; color: white; }
         @media (max-width: 768px) {
             .scroll-notice {
                 display: block;
@@ -183,14 +183,39 @@
         const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Helper to show status messages
-        function showStatus(message, isError = false) {
+        // Status helper
+        function showStatus(message, type = "info", details = null) {
             const banner = document.getElementById('status-banner');
-            banner.textContent = message;
-            banner.className = `status-banner ${isError ? 'error' : 'success'}`;
+            banner.textContent = message + (details ? ` (${details})` : '');
+            banner.className = `status-banner ${type}`;
             banner.style.display = 'block';
-            setTimeout(() => { banner.style.display = 'none'; }, 3000);
+            clearTimeout(banner._timeout);
+            banner._timeout = setTimeout(() => { banner.style.display = 'none'; }, 5000);
         }
+
+        // Connection status (for Realtime, not used in this example)
+        const connectionStatus = { isConnected: true, showWarning: false };
+        function showConnectionWarning() {
+            showStatus('Connection issues detected - retrying...', 'warning');
+            connectionStatus.showWarning = true;
+        }
+        function hideConnectionWarning() {
+            if (connectionStatus.showWarning) {
+                document.getElementById('status-banner').style.display = 'none';
+                connectionStatus.showWarning = false;
+            }
+        }
+
+        // Optional: Uncomment to listen for Realtime connection changes
+        // supabase.realtime.onStatusChange((status) => {
+        //     if (status === 'SUBSCRIBED') {
+        //         connectionStatus.isConnected = true;
+        //         hideConnectionWarning();
+        //     } else {
+        //         connectionStatus.isConnected = false;
+        //         showConnectionWarning();
+        //     }
+        // });
 
         const app = {
             users: [],
@@ -198,7 +223,6 @@
             initialized: false,
             
             async init() {
-                await this.setupDatabase();
                 await this.loadData();
                 this.updateDates();
                 await this.render();
@@ -209,61 +233,25 @@
                 setInterval(this.checkNewDay.bind(this), 60000);
             },
             
-            async setupDatabase() {
-                // Check if users table exists
-                const { error: usersError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .limit(1);
-                
-                if (usersError && usersError.code === '42P01') { // Table does not exist
-                    // You cannot run raw SQL with Supabase JS client, so this is a reminder:
-                    // Go to your Supabase dashboard and run these SQL commands:
-                    // CREATE TABLE users (
-                    //     id SERIAL PRIMARY KEY,
-                    //     name TEXT UNIQUE NOT NULL,
-                    //     created_at TIMESTAMP DEFAULT NOW()
-                    // );
-                    // CREATE TABLE steps (
-                    //     id SERIAL PRIMARY KEY,
-                    //     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    //     date DATE NOT NULL,
-                    //     step_count INTEGER NOT NULL DEFAULT 0,
-                    //     UNIQUE(user_id, date)
-                    // );
-                    // ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-                    // ALTER TABLE steps ENABLE ROW LEVEL SECURITY;
-                    // CREATE POLICY "Users public access" ON users FOR SELECT USING (true);
-                    // CREATE POLICY "Steps public access" ON steps FOR ALL USING (true);
-                    // INSERT INTO users (name) VALUES ('Asif'), ('Chinnu'), ('Henri'), ('Jean'), ('Neethu'), ('Nehna'), ('Vijay'), ('Vinod');
-
-                    // For now, just show a message
-                    showStatus('Please create the database tables and insert users using the SQL above in your Supabase dashboard.', true);
-                    return;
-                }
-                
-                // If tables exist, continue
-                showStatus('Database tables exist, continuing...');
-            },
-            
             async loadData() {
-                // Load users
+                showStatus('Loading users...', 'info');
                 const { data: users, error: usersError } = await supabase
                     .from('users')
                     .select('id, name');
                 
                 if (usersError) {
-                    showStatus('Error loading users: ' + usersError.message, true);
+                    showStatus('Error loading users', 'error', usersError.message);
                     return;
                 }
                 
                 if (!users || users.length === 0) {
-                    showStatus('No users found. Please add users in your Supabase dashboard.', true);
+                    showStatus('No users found. Please add users in your Supabase dashboard.', 'warning');
                     return;
                 }
                 
                 this.users = users;
-                
+                showStatus(`Loaded ${users.length} users`, 'success');
+
                 // Load dates (last 14 days)
                 const today = new Date();
                 this.dates = [];
@@ -272,8 +260,9 @@
                     date.setDate(date.getDate() - i);
                     this.dates.push(date.toISOString().split('T')[0]);
                 }
-                
+
                 // Initialize step data
+                showStatus('Loading steps for each user...', 'info');
                 for (const user of this.users) {
                     for (const date of this.dates) {
                         const { data: step, error: stepError } = await supabase
@@ -284,7 +273,7 @@
                             .single();
                         
                         if (stepError && stepError.code !== 'PGRST116') { // Ignore "no rows found"
-                            showStatus('Error loading steps: ' + stepError.message, true);
+                            showStatus('Error loading steps', 'error', stepError.message);
                             continue;
                         }
                         
@@ -294,12 +283,12 @@
                                 .insert([{ user_id: user.id, date, step_count: date === this.dates[0] ? 1 : 0 }]);
                             
                             if (insertError) {
-                                showStatus('Error inserting step: ' + insertError.message, true);
+                                showStatus('Error inserting step', 'error', insertError.message);
                             }
                         }
                     }
                 }
-                showStatus('Data loaded successfully!');
+                showStatus('Data loaded successfully!', 'success');
             },
             
             async updateDates() {
@@ -316,7 +305,7 @@
                             .insert([{ user_id: user.id, date: today, step_count: 0 }]);
                         
                         if (insertError) {
-                            showStatus('Error adding new day: ' + insertError.message, true);
+                            showStatus('Error adding new day', 'error', insertError.message);
                             continue;
                         }
                         
@@ -328,10 +317,10 @@
                             .eq('user_id', user.id);
                         
                         if (deleteError) {
-                            showStatus('Error removing old data: ' + deleteError.message, true);
+                            showStatus('Error removing old data', 'error', deleteError.message);
                         }
                     }
-                    showStatus('New day added and old data cleaned up!');
+                    showStatus('New day added and old data cleaned up!', 'success');
                 }
             },
             
@@ -360,7 +349,7 @@
                         .eq('user_id', user.id);
                     
                     if (error) {
-                        showStatus('Error loading steps for leaderboard: ' + error.message, true);
+                        showStatus('Error loading steps for leaderboard', 'error', error.message);
                         return { ...user, totalSteps: 0 };
                     }
                     
@@ -431,7 +420,7 @@
                             .single();
                         
                         if (error && error.code !== 'PGRST116') {
-                            showStatus('Error loading steps: ' + error.message, true);
+                            showStatus('Error loading steps', 'error', error.message);
                         }
                         
                         stepCell.textContent = step ? step.step_count : 0;
@@ -470,27 +459,28 @@
                         .maybeSingle();
                     
                     if (checkError) {
-                        showStatus('Error checking name: ' + checkError.message, true);
+                        showStatus('Error checking name', 'error', checkError.message);
                         return;
                     }
                     
                     if (existingUser) {
-                        showStatus('Name already exists!', true);
+                        showStatus('Name already exists!', 'error');
                         target.textContent = user.name;
                         return;
                     }
                     
+                    showStatus(`Updating user ${user.id} name...`, 'info');
                     const { error } = await supabase
                         .from('users')
                         .update({ name: newName })
                         .eq('id', userId);
                     
                     if (error) {
-                        showStatus('Failed to update name: ' + error.message, true);
+                        showStatus('Failed to update name', 'error', error.message);
                         target.textContent = user.name;
                     } else {
                         user.name = newName;
-                        showStatus('Name updated!');
+                        showStatus('Name updated!', 'success');
                     }
                 } 
                 // Handle step edit
@@ -498,6 +488,7 @@
                     const date = target.getAttribute('data-date');
                     const newSteps = parseInt(target.textContent) || 0;
                     
+                    showStatus(`Updating steps for user ${user.id} on ${date}...`, 'info');
                     const { error } = await supabase
                         .from('steps')
                         .update({ step_count: newSteps })
@@ -505,17 +496,16 @@
                         .eq('date', date);
                     
                     if (error) {
-                        showStatus('Failed to update step count: ' + error.message, true);
+                        showStatus('Failed to update step count', 'error', error.message);
                     } else {
-                        showStatus('Step count updated!');
+                        showStatus('Step count updated!', 'success');
                     }
                 }
                 this.renderLeaderboard();
             },
             
             async saveToSupabase() {
-                // Data is automatically saved on edit, but you can add a status here
-                showStatus('All changes are saved to Supabase!');
+                showStatus('All changes are saved to Supabase!', 'success');
             }
         };
         
