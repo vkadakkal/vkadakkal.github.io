@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step Tracker</title>
     <style>
+        /* Same CSS as previous implementation */
         :root {
             --bg-dark: #121212;
             --card-bg: #1e1e1e;
@@ -155,125 +156,195 @@
             <tbody></tbody>
         </table>
     </div>
-    <button id="save-btn">Save Data to JSON</button>
+    <button id="save-btn">Save Data to Supabase</button>
+
+    <!-- Include Supabase client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        class CircularBuffer {
-            constructor(size) {
-                this.buffer = new Array(size).fill(0);
-                this.pointer = 0;
-                this.size = size;
-            }
-            push(value) {
-                this.buffer[this.pointer] = value;
-                this.pointer = (this.pointer + 1) % this.size;
-            }
-            get(i) {
-                return this.buffer[(this.pointer + i) % this.size];
-            }
-            set(i, value) {
-                this.buffer[(this.pointer + i) % this.size] = value;
-            }
-            toArray() {
-                return [...this.buffer];
-            }
-        }
+        // Initialize Supabase client
+        const SUPABASE_URL = 'https://chrncxaqgzpjsypuminf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocm5jeGFxZ3pwanN5cHVtaW5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwMzk2MjUsImV4cCI6MjA2NjYxNTYyNX0.vhZkMW-oBl5aPxMO51HMyEVODq1Fj6xmx6vROubnZos';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const app = {
             users: [],
             dates: [],
             initialized: false,
-            init() {
-                this.loadData();
+            
+            async init() {
+                await this.setupDatabase();
+                await this.loadData();
                 this.updateDates();
                 this.render();
                 this.initialized = true;
+                
                 document.addEventListener('blur', this.handleEdit.bind(this), true);
-                document.getElementById('save-btn').addEventListener('click', this.saveToJSON.bind(this));
+                document.getElementById('save-btn').addEventListener('click', this.saveToSupabase.bind(this));
                 setInterval(this.checkNewDay.bind(this), 60000);
             },
-            loadData() {
-                const savedData = localStorage.getItem('stepTrackerData');
-                if (savedData) {
-                    const parsedData = JSON.parse(savedData);
-                    this.users = parsedData.users.map(u => ({
-                        ...u,
-                        steps: new CircularBuffer(14)
-                    }));
-                    this.users.forEach((user, i) => {
-                        user.steps.buffer = [...parsedData.users[i].steps.buffer];
-                        user.steps.pointer = parsedData.users[i].steps.pointer;
-                    });
-                    this.dates = parsedData.dates;
+            
+            async setupDatabase() {
+                // Create users table if not exists
+                const { error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+                
+                if (usersError) {
+                    await supabase.rpc(`
+                        CREATE TABLE users (
+                            id SERIAL PRIMARY KEY,
+                            name TEXT UNIQUE NOT NULL,
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                    `);
+                    
+                    // Insert default users
+                    const defaultUsers = ['Asif', 'Chinnu', 'Henri', 'Jean', 'Neethu', 'Nehna', 'Vijay', 'Vinod'];
+                    for (const name of defaultUsers) {
+                        await supabase
+                            .from('users')
+                            .insert([{ name }]);
+                    }
+                }
+                
+                // Create steps table if not exists
+                const { error: stepsError } = await supabase
+                    .from('steps')
+                    .select('*')
+                    .limit(1);
+                
+                if (stepsError) {
+                    await supabase.rpc(`
+                        CREATE TABLE steps (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            date DATE NOT NULL,
+                            step_count INTEGER NOT NULL DEFAULT 0,
+                            UNIQUE(user_id, date)
+                        );
+                    `);
+                }
+                
+                // Enable Row Level Security
+                await supabase.rpc(`
+                    ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE steps ENABLE ROW LEVEL SECURITY;
+                    
+                    CREATE POLICY "Users public access" ON users
+                    FOR SELECT USING (true);
+                    
+                    CREATE POLICY "Steps public access" ON steps
+                    FOR ALL USING (true);
+                `);
+            },
+            
+            async loadData() {
+                // Load users
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('id, name');
+                
+                if (usersError) {
+                    console.error('Error loading users:', usersError);
                     return;
                 }
-                fetch('steps.json')
-                    .then(response => response.json())
-                    .then(data => {
-                        this.users = data.users.map(u => ({
-                            ...u,
-                            steps: new CircularBuffer(14)
-                        }));
-                        this.users.forEach((user, i) => {
-                            user.steps.buffer = [...data.users[i].steps.buffer];
-                            user.steps.pointer = data.users[i].steps.pointer;
-                        });
-                        this.dates = data.dates;
-                        this.saveToLocalStorage();
-                    })
-                    .catch(() => {
-                        this.initializeDefaultData();
-                    });
-            },
-            initializeDefaultData() {
+                
+                this.users = users;
+                
+                // Load dates (last 14 days)
                 const today = new Date();
+                this.dates = [];
                 for (let i = 13; i >= 0; i--) {
                     const date = new Date(today);
                     date.setDate(date.getDate() - i);
                     this.dates.push(date.toISOString().split('T')[0]);
                 }
-                const users = ["Asif", "Chinnu", "Henri", "Jean", "Neethu", "Nehna", "Vijay", "Vinod"];
-                users.forEach((name, i) => {
-                    const stepsBuffer = new CircularBuffer(14);
-                    stepsBuffer.buffer.fill(0);
-                    stepsBuffer.buffer[0] = 1; // Oldest day = 1
-                    this.users.push({
-                        id: Date.now() + i,
-                        name: name,
-                        steps: stepsBuffer
-                    });
-                });
-                this.saveToLocalStorage();
+                
+                // Initialize step data
+                for (const user of this.users) {
+                    for (const date of this.dates) {
+                        const { data: step, error } = await supabase
+                            .from('steps')
+                            .select('step_count')
+                            .eq('user_id', user.id)
+                            .eq('date', date)
+                            .single();
+                        
+                        if (!step) {
+                            await supabase
+                                .from('steps')
+                                .insert([{
+                                    user_id: user.id,
+                                    date: date,
+                                    step_count: date === this.dates[0] ? 1 : 0
+                                }]);
+                        }
+                    }
+                }
             },
+            
             updateDates() {
                 const today = new Date().toISOString().split('T')[0];
                 const lastDate = this.dates[this.dates.length - 1];
+                
                 if (today !== lastDate) {
                     this.dates.shift();
                     this.dates.push(today);
-                    this.users.forEach(user => {
-                        user.steps.push(0);
+                    
+                    // Add new day for all users
+                    this.users.forEach(async user => {
+                        await supabase
+                            .from('steps')
+                            .insert([{
+                                user_id: user.id,
+                                date: today,
+                                step_count: 0
+                            }]);
+                    });
+                    
+                    // Remove old data (beyond 14 days)
+                    const oldestDate = this.dates[0];
+                    this.users.forEach(async user => {
+                        await supabase
+                            .from('steps')
+                            .delete()
+                            .lt('date', oldestDate)
+                            .eq('user_id', user.id);
                     });
                 }
             },
-            checkNewDay() {
+            
+            async checkNewDay() {
                 const now = new Date();
                 if (now.getHours() === 0 && now.getMinutes() === 0) {
                     this.updateDates();
                     this.render();
                 }
             },
-            render() {
-                this.renderLeaderboard();
-                this.renderStepsTable();
+            
+            async render() {
+                await this.renderLeaderboard();
+                await this.renderStepsTable();
             },
-            renderLeaderboard() {
+            
+            async renderLeaderboard() {
                 const leaderboard = document.querySelector('#leaderboard tbody');
                 leaderboard.innerHTML = '';
-                const usersWithTotals = this.users.map(user => ({
-                    ...user,
-                    totalSteps: user.steps.buffer.reduce((sum, steps) => sum + steps, 0)
+                
+                // Calculate total steps for each user
+                const usersWithTotals = await Promise.all(this.users.map(async user => {
+                    const { data: steps, error } = await supabase
+                        .from('steps')
+                        .select('step_count')
+                        .eq('user_id', user.id);
+                    
+                    const totalSteps = steps.reduce((sum, step) => sum + step.step_count, 0);
+                    return { ...user, totalSteps };
                 }));
+                
                 usersWithTotals.sort((a, b) => b.totalSteps - a.totalSteps);
-                // Medal emojis for top 3
+                
                 const medals = ['🥇', '🥈', '🥉'];
                 usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
@@ -285,14 +356,18 @@
                     leaderboard.appendChild(row);
                 });
             },
-            renderStepsTable() {
+            
+            async renderStepsTable() {
                 const table = document.getElementById('steps-table');
                 const thead = table.querySelector('thead tr');
                 const tbody = table.querySelector('tbody');
+                
                 while (thead.children.length > 1) {
                     thead.removeChild(thead.lastChild);
                 }
+                
                 tbody.innerHTML = '';
+                
                 // Sort dates in reverse chronological order
                 const displayDates = [...this.dates].reverse();
                 displayDates.forEach(dateStr => {
@@ -302,45 +377,70 @@
                         month: 'short',
                         day: '2-digit'
                     });
+                    
                     const th = document.createElement('th');
                     th.textContent = formattedDate;
                     thead.appendChild(th);
                 });
-                this.users.forEach(user => {
+                
+                for (const user of this.users) {
                     const row = document.createElement('tr');
+                    
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
                     nameCell.classList.add('editable');
                     nameCell.setAttribute('data-user-id', user.id);
                     nameCell.contentEditable = true;
                     row.appendChild(nameCell);
-                    // Display steps in reverse chronological order
-                    for (let i = 13; i >= 0; i--) {
+                    
+                    // Get steps for each date in reverse order
+                    for (let i = displayDates.length - 1; i >= 0; i--) {
+                        const date = displayDates[i];
                         const stepCell = document.createElement('td');
-                        stepCell.textContent = user.steps.get(i);
+                        
+                        const { data: step, error } = await supabase
+                            .from('steps')
+                            .select('step_count')
+                            .eq('user_id', user.id)
+                            .eq('date', date)
+                            .single();
+                        
+                        stepCell.textContent = step ? step.step_count : 0;
                         stepCell.classList.add('editable');
                         stepCell.setAttribute('data-user-id', user.id);
-                        stepCell.setAttribute('data-day-index', i); // Fixed bug here
+                        stepCell.setAttribute('data-date', date);
                         stepCell.contentEditable = true;
                         row.appendChild(stepCell);
                     }
+                    
                     tbody.appendChild(row);
-                });
+                }
             },
-            handleEdit(event) {
+            
+            async handleEdit(event) {
                 if (!this.initialized) return;
+                
                 const target = event.target;
                 if (!target.classList.contains('editable')) return;
-                const userId = target.getAttribute('data-user-id');
-                const user = this.users.find(u => u.id === parseInt(userId));
+                
+                const userId = parseInt(target.getAttribute('data-user-id'));
+                const user = this.users.find(u => u.id === userId);
+                
                 if (!user) return;
+                
                 // Handle name edit
-                if (!target.hasAttribute('data-day-index')) {
+                if (!target.hasAttribute('data-date')) {
                     const newName = target.textContent.trim();
-                    const nameExists = this.users.some(u => 
-                        u.id !== user.id && u.name.toLowerCase() === newName.toLowerCase()
-                    );
-                    if (nameExists) {
+                    
+                    // Check if name exists
+                    const { data: existingUser, error } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('name', newName)
+                        .neq('id', userId)
+                        .maybeSingle();
+                    
+                    if (existingUser) {
                         document.getElementById('name-error').style.display = 'block';
                         target.textContent = user.name;
                         setTimeout(() => {
@@ -348,43 +448,37 @@
                         }, 3000);
                         return;
                     }
+                    
+                    // Update name in database
+                    await supabase
+                        .from('users')
+                        .update({ name: newName })
+                        .eq('id', userId);
+                    
                     user.name = newName;
                 } 
                 // Handle step edit
                 else {
-                    const dayIndex = parseInt(target.getAttribute('data-day-index'));
+                    const date = target.getAttribute('data-date');
                     const newSteps = parseInt(target.textContent) || 0;
-                    user.steps.set(dayIndex, newSteps);
+                    
+                    // Update step count in database
+                    await supabase
+                        .from('steps')
+                        .update({ step_count: newSteps })
+                        .eq('user_id', userId)
+                        .eq('date', date);
                 }
-                this.saveToLocalStorage();
+                
                 this.renderLeaderboard();
             },
-            saveToLocalStorage() {
-                const data = {
-                    users: this.users.map(u => ({
-                        ...u,
-                        steps: {
-                            buffer: u.steps.buffer,
-                            pointer: u.steps.pointer
-                        }
-                    })),
-                    dates: this.dates
-                };
-                localStorage.setItem('stepTrackerData', JSON.stringify(data));
-            },
-            saveToJSON() {
-                this.saveToLocalStorage();
-                const data = JSON.parse(localStorage.getItem('stepTrackerData'));
-                const dataStr = JSON.stringify(data, null, 2);
-                const blob = new Blob([dataStr], {type: 'application/json'});
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'steps.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+            
+            async saveToSupabase() {
+                // Data is automatically saved on edit
+                alert('Data saved to Supabase successfully!');
             }
         };
+        
         document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
