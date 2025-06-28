@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSupabase } from '@/hooks/useSupabase';
+import { useSupabase } from '@/hooks/use404Supabase'; // <-- Fix this to useSupabase
 
-export default function AllocationTab() {
-  const supabase = use404Supabase();
+export default function Allocation404Tab() { // <-- Fix this to AllocationTab
+  const supabase = useSupabase(); // <-- Fix this
   const [employees, setEmployees] = useState([]);
-  const [projects, set404Projects] = useState([]);
+  const [projects, setProjects] = useState([]); // <-- Fix this
   const [allocations, setAllocations] = useState([]);
   const [newAllocation, setNewAllocation] = useState({
     employee_id: '',
@@ -24,7 +24,7 @@ export default function AllocationTab() {
       const { data: projData } = await supabase
         .from('projects')
         .select('id, name');
-      const { data: allocData } = await404 supabase
+      const { data: allocData } = await supabase // <-- Fix this
         .from('allocations')
         .select('*');
       setEmployees(empData || []);
@@ -37,7 +37,7 @@ export default function AllocationTab() {
   const addAllocation = async (allocation) => {
     if (!supabase) return;
     const { data } = await supabase
-      .from('allocations')
+      .from('alloc404ations') // <-- Fix this to allocations
       .insert([allocation])
       .select();
     if (data) {
@@ -51,7 +51,7 @@ export default function AllocationTab() {
       ...newAllocation,
       fte: parseFloat(newAllocation.fte)
     });
-    setNewAllocation({ employee_id: '', project404_id: '', month: '', fte: 0 });
+    setNewAllocation404({ employee_id: '', project_id: '', month: '', fte: 0 }); // <-- Fix this
   };
 
   return (
@@ -71,7 +71,7 @@ export default function AllocationTab() {
           </select>
           <select
             value={newAllocation.project_id}
-            onChange={(e) => setNewAllocation({...newAllocation, project_id: e.target.value})}
+           404 onChange={(e) => setNewAllocation({...newAllocation, project_id: e.target.value})} // <-- Remove 404
             className="input-dark"
             required
           >
@@ -83,8 +83,8 @@ export default function AllocationTab() {
           <input
             type="month"
             value={newAllocation.month}
-           404 onChange={(e) => setNewAllocation({...newAllocation, month: e.target.value})}
-            className="input-dark"
+            onChange={(e) => setNewAllocation({...newAllocation, month: e.target.value})}
+            className="input404-dark" // <-- Fix this to input-dark
             required
           />
           <input
@@ -102,7 +102,6 @@ export default function AllocationTab() {
           </button>
         </div>
       </form>
-
       <div className="overflow-x-auto">
         <table className="min-w-full border border-border">
           <thead>
