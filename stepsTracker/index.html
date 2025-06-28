@@ -10,6 +10,7 @@
             --card-bg: #1e1e1e;
             --text-light: #e0e0e0;
             --accent: #bb86fc;
+            --button-bg: #2a2a2a;
             --border-radius: 10px;
             --row-even: #2a2a2a;
             --row-odd: #242424;
@@ -21,10 +22,44 @@
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
+            line-height: 1.6;
         }
         h1, h2 {
             color: var(--accent);
             text-align: center;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            gap: 20px;
+        }
+        .date-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            min-width: 300px;
+            text-align: center;
+        }
+        .nav-button {
+            background-color: var(--button-bg);
+            color: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .nav-button:hover {
+            background-color: var(--accent);
+            color: #000;
+            transform: scale(1.1);
         }
         .table-container {
             overflow-x: auto;
@@ -138,6 +173,14 @@
                 padding: 8px 10px;
                 font-size: 0.9rem;
             }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .date-display {
+                order: -1;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
@@ -145,6 +188,7 @@
     <h1>Step Tracker</h1>
     <div id="status-banner" class="status-banner"></div>
     <div class="error" id="name-error">User name already exists!</div>
+    
     <h2>Leaderboard</h2>
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
@@ -159,6 +203,13 @@
             <tbody></tbody>
         </table>
     </div>
+    
+    <div class="controls">
+        <button class="nav-button" id="prev-dates">&lt;&lt;</button>
+        <div class="date-display" id="date-range"></div>
+        <button class="nav-button" id="next-dates">&gt;&gt;</button>
+    </div>
+    
     <h2>Daily Steps</h2>
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
@@ -172,7 +223,8 @@
             <tbody></tbody>
         </table>
     </div>
-    <button id="save-btn">Save Data to Supabase</button>
+    
+    <button id="save-btn">Save Data to JSON</button>
 
     <!-- Include Supabase client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -193,47 +245,56 @@
             banner._timeout = setTimeout(() => { banner.style.display = 'none'; }, 5000);
         }
 
-        // Connection status (for Realtime, not used in this example)
-        const connectionStatus = { isConnected: true, showWarning: false };
-        function showConnectionWarning() {
-            showStatus('Connection issues detected - retrying...', 'warning');
-            connectionStatus.showWarning = true;
-        }
-        function hideConnectionWarning() {
-            if (connectionStatus.showWarning) {
-                document.getElementById('status-banner').style.display = 'none';
-                connectionStatus.showWarning = false;
-            }
-        }
-
-        // Optional: Uncomment to listen for Realtime connection changes
-        // supabase.realtime.onStatusChange((status) => {
-        //     if (status === 'SUBSCRIBED') {
-        //         connectionStatus.isConnected = true;
-        //         hideConnectionWarning();
-        //     } else {
-        //         connectionStatus.isConnected = false;
-        //         showConnectionWarning();
-        //     }
-        // });
-
         const app = {
             users: [],
             dates: [],
+            currentStartDate: null,
             initialized: false,
             
             async init() {
-                await this.loadData();
-                this.updateDates();
+                this.currentStartDate = new Date();
+                this.currentStartDate.setDate(this.currentStartDate.getDate() - 13); // Start 13 days ago
+                await this.loadUsers();
+                this.updateDateWindow();
                 await this.render();
                 this.initialized = true;
                 
+                // Set up event listeners
                 document.addEventListener('blur', this.handleEdit.bind(this), true);
-                document.getElementById('save-btn').addEventListener('click', this.saveToSupabase.bind(this));
-                setInterval(this.checkNewDay.bind(this), 60000);
+                document.getElementById('save-btn').addEventListener('click', this.saveToJSON.bind(this));
+                document.getElementById('prev-dates').addEventListener('click', () => this.shiftDates(-1));
+                document.getElementById('next-dates').addEventListener('click', () => this.shiftDates(1));
             },
             
-            async loadData() {
+            async shiftDates(direction) {
+                // Shift the start date by 1 day in the specified direction
+                this.currentStartDate.setDate(this.currentStartDate.getDate() + direction);
+                this.updateDateWindow();
+                await this.render();
+            },
+            
+            updateDateWindow() {
+                this.dates = [];
+                const startDate = new Date(this.currentStartDate);
+                
+                // Generate 14 dates starting from the current start date
+                for (let i = 0; i < 14; i++) {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + i);
+                    this.dates.push(date.toISOString().split('T')[0]);
+                }
+                
+                // Update the date range display
+                const startStr = new Date(this.dates[0]).toLocaleDateString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric'
+                });
+                const endStr = new Date(this.dates[13]).toLocaleDateString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric'
+                });
+                document.getElementById('date-range').textContent = `${startStr} - ${endStr}`;
+            },
+            
+            async loadUsers() {
                 showStatus('Loading users...', 'info');
                 const { data: users, error: usersError } = await supabase
                     .from('users')
@@ -251,85 +312,21 @@
                 
                 this.users = users;
                 showStatus(`Loaded ${users.length} users`, 'success');
-
-                // Load dates (last 14 days)
-                const today = new Date();
-                this.dates = [];
-                for (let i = 13; i >= 0; i--) {
-                    const date = new Date(today);
-                    date.setDate(date.getDate() - i);
-                    this.dates.push(date.toISOString().split('T')[0]);
-                }
-
-                // Initialize step data
-                showStatus('Loading steps for each user...', 'info');
-                for (const user of this.users) {
-                    for (const date of this.dates) {
-                        const { data: step, error: stepError } = await supabase
-                            .from('steps')
-                            .select('step_count')
-                            .eq('user_id', user.id)
-                            .eq('date', date)
-                            .single();
-                        
-                        if (stepError && stepError.code !== 'PGRST116') { // Ignore "no rows found"
-                            showStatus('Error loading steps', 'error', stepError.message);
-                            continue;
-                        }
-                        
-                        if (!step) {
-                            const { error: insertError } = await supabase
-                                .from('steps')
-                                .insert([{ user_id: user.id, date, step_count: date === this.dates[0] ? 1 : 0 }]);
-                            
-                            if (insertError) {
-                                showStatus('Error inserting step', 'error', insertError.message);
-                            }
-                        }
-                    }
-                }
-                showStatus('Data loaded successfully!', 'success');
             },
             
-            async updateDates() {
-                const today = new Date().toISOString().split('T')[0];
-                const lastDate = this.dates[this.dates.length - 1];
+            async getStepsForUserAndDate(userId, date) {
+                const { data: step, error } = await supabase
+                    .from('steps')
+                    .select('step_count')
+                    .eq('user_id', userId)
+                    .eq('date', date)
+                    .maybeSingle();
                 
-                if (today !== lastDate) {
-                    this.dates.shift();
-                    this.dates.push(today);
-                    
-                    for (const user of this.users) {
-                        const { error: insertError } = await supabase
-                            .from('steps')
-                            .insert([{ user_id: user.id, date: today, step_count: 0 }]);
-                        
-                        if (insertError) {
-                            showStatus('Error adding new day', 'error', insertError.message);
-                            continue;
-                        }
-                        
-                        const oldestDate = this.dates[0];
-                        const { error: deleteError } = await supabase
-                            .from('steps')
-                            .delete()
-                            .lt('date', oldestDate)
-                            .eq('user_id', user.id);
-                        
-                        if (deleteError) {
-                            showStatus('Error removing old data', 'error', deleteError.message);
-                        }
-                    }
-                    showStatus('New day added and old data cleaned up!', 'success');
+                if (error && error.code !== 'PGRST116') { // Ignore "no rows found"
+                    showStatus('Error loading steps', 'error', error.message);
                 }
-            },
-            
-            async checkNewDay() {
-                const now = new Date();
-                if (now.getHours() === 0 && now.getMinutes() === 0) {
-                    await this.updateDates();
-                    await this.render();
-                }
+                
+                return step ? step.step_count : 0;
             },
             
             async render() {
@@ -341,31 +338,26 @@
                 const leaderboard = document.querySelector('#leaderboard tbody');
                 leaderboard.innerHTML = '';
                 
-                // Calculate total steps for each user
+                // For each user, sum their steps for the current date range
                 const usersWithTotals = await Promise.all(this.users.map(async user => {
-                    const { data: steps, error } = await supabase
-                        .from('steps')
-                        .select('step_count')
-                        .eq('user_id', user.id);
-                    
-                    if (error) {
-                        showStatus('Error loading steps for leaderboard', 'error', error.message);
-                        return { ...user, totalSteps: 0 };
-                    }
-                    
-                    const totalSteps = steps.reduce((sum, step) => sum + step.step_count, 0);
+                    const steps = await Promise.all(
+                        this.dates.map(date => this.getStepsForUserAndDate(user.id, date))
+                    );
+                    const totalSteps = steps.reduce((sum, step) => sum + step, 0);
                     return { ...user, totalSteps };
                 }));
                 
+                // Sort by total steps descending
                 usersWithTotals.sort((a, b) => b.totalSteps - a.totalSteps);
                 
+                // Display top 3
                 const medals = ['🥇', '🥈', '🥉'];
                 usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${medals[index] || (index + 1)}</td>
                         <td>${user.name}</td>
-                        <td>${user.totalSteps}</td>
+                        <td>${user.totalSteps.toLocaleString()}</td>
                     `;
                     leaderboard.appendChild(row);
                 });
@@ -376,15 +368,15 @@
                 const thead = table.querySelector('thead tr');
                 const tbody = table.querySelector('tbody');
                 
+                // Clear existing columns (except user column)
                 while (thead.children.length > 1) {
                     thead.removeChild(thead.lastChild);
                 }
                 
                 tbody.innerHTML = '';
                 
-                // Sort dates in reverse chronological order
-                const displayDates = [...this.dates].reverse();
-                displayDates.forEach(dateStr => {
+                // Add date headers
+                this.dates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
                         weekday: 'short',
@@ -397,9 +389,11 @@
                     thead.appendChild(th);
                 });
                 
+                // Add user rows
                 for (const user of this.users) {
                     const row = document.createElement('tr');
                     
+                    // User name cell (editable)
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
                     nameCell.classList.add('editable');
@@ -407,23 +401,11 @@
                     nameCell.contentEditable = true;
                     row.appendChild(nameCell);
                     
-                    // Get steps for each date in reverse order
-                    for (let i = displayDates.length - 1; i >= 0; i--) {
-                        const date = displayDates[i];
+                    // Step cells (editable)
+                    for (const date of this.dates) {
                         const stepCell = document.createElement('td');
-                        
-                        const { data: step, error } = await supabase
-                            .from('steps')
-                            .select('step_count')
-                            .eq('user_id', user.id)
-                            .eq('date', date)
-                            .single();
-                        
-                        if (error && error.code !== 'PGRST116') {
-                            showStatus('Error loading steps', 'error', error.message);
-                        }
-                        
-                        stepCell.textContent = step ? step.step_count : 0;
+                        const stepCount = await this.getStepsForUserAndDate(user.id, date);
+                        stepCell.textContent = stepCount.toLocaleString();
                         stepCell.classList.add('editable');
                         stepCell.setAttribute('data-user-id', user.id);
                         stepCell.setAttribute('data-date', date);
@@ -486,14 +468,12 @@
                 // Handle step edit
                 else {
                     const date = target.getAttribute('data-date');
-                    const newSteps = parseInt(target.textContent) || 0;
+                    const newSteps = parseInt(target.textContent.replace(/,/g, '')) || 0;
                     
                     showStatus(`Updating steps for user ${user.id} on ${date}...`, 'info');
                     const { error } = await supabase
                         .from('steps')
-                        .update({ step_count: newSteps })
-                        .eq('user_id', userId)
-                        .eq('date', date);
+                        .upsert({ user_id: userId, date, step_count: newSteps });
                     
                     if (error) {
                         showStatus('Failed to update step count', 'error', error.message);
@@ -504,11 +484,41 @@
                 this.renderLeaderboard();
             },
             
-            async saveToSupabase() {
-                showStatus('All changes are saved to Supabase!', 'success');
+            async saveToJSON() {
+                // Collect all steps for all users and the current date range
+                const data = {
+                    users: this.users,
+                    dates: this.dates,
+                    steps: []
+                };
+                
+                for (const user of this.users) {
+                    for (const date of this.dates) {
+                        const stepCount = await this.getStepsForUserAndDate(user.id, date);
+                        data.steps.push({
+                            user_id: user.id,
+                            date,
+                            step_count: stepCount
+                        });
+                    }
+                }
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], {type: 'application/json'});
+                
+                // Create download link
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'steps.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                showStatus('Data saved to steps.json!', 'success');
             }
         };
         
+        // Initialize the app
         document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
