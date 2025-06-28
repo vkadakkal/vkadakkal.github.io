@@ -151,6 +151,18 @@
         .status-banner.error { background-color: #f44336; color: white; }
         .status-banner.info { background-color: #2196F3; color: white; }
         .status-banner.warning { background-color: #ff9800; color: white; }
+        /* Sticky columns for horizontal scrolling */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--card-bg);
+            box-shadow: 2px 0 2px -1px #0006;
+        }
+        .sticky-col-header {
+            z-index: 3;
+            background: #252525;
+        }
         @media (max-width: 600px) {
             th, td {
                 padding: 4px 4px;
@@ -197,7 +209,7 @@
         <table id="leaderboard" class="leaderboard">
             <thead>
                 <tr>
-                    <th>Rank</th>
+                    <th class="sticky-col sticky-col-header">Rank</th>
                     <th>Name</th>
                     <th>Total Steps</th>
                 </tr>
@@ -216,7 +228,7 @@
         <table id="steps-table">
             <thead>
                 <tr>
-                    <th>User</th>
+                    <th class="sticky-col sticky-col-header">User</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -298,7 +310,7 @@
 
             async getStepsForUserAndDate(userId, date) {
                 const { data: step, error } = await supabase
-                    .from('steps
+                    .from('steps')
                     .select('step_count')
                     .eq('user_id', userId)
                     .eq('date', date)
@@ -328,11 +340,16 @@
                 const medals = ['🥇', '🥈', '🥉'];
                 usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${medals[index] || (index + 1)}</td>
-                        <td>${user.name}</td>
-                        <td>${user.totalSteps.toLocaleString()}</td>
-                    `;
+                    const rankCell = document.createElement('td');
+                    rankCell.textContent = medals[index] || (index + 1);
+                    rankCell.classList.add('sticky-col');
+                    row.appendChild(rankCell);
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = user.name;
+                    row.appendChild(nameCell);
+                    const stepsCell = document.createElement('td');
+                    stepsCell.textContent = user.totalSteps.toLocaleString();
+                    row.appendChild(stepsCell);
                     leaderboard.appendChild(row);
                 });
             },
@@ -341,10 +358,17 @@
                 const table = document.getElementById('steps-table');
                 const thead = table.querySelector('thead tr');
                 const tbody = table.querySelector('tbody');
-                while (thead.children.length > 1) thead.removeChild(thead.lastChild);
+                thead.innerHTML = '';
                 tbody.innerHTML = '';
                 // Display dates in reverse chronological order (newest first)
                 const displayDates = [...this.dates].reverse();
+
+                // Sticky first header cell
+                const thName = document.createElement('th');
+                thName.textContent = 'User';
+                thName.classList.add('sticky-col', 'sticky-col-header');
+                thead.appendChild(thName);
+
                 displayDates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
@@ -354,13 +378,15 @@
                     th.textContent = formattedDate;
                     thead.appendChild(th);
                 });
+
                 for (const user of this.users) {
                     const row = document.createElement('tr');
-                    // User name cell (not editable)
+                    // Sticky user name cell
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
+                    nameCell.classList.add('sticky-col');
                     row.appendChild(nameCell);
-                    // Step cells (editable) - display in reverse order
+
                     for (const date of displayDates) {
                         const stepCell = document.createElement('td');
                         const stepCount = await this.getStepsForUserAndDate(user.id, date);
