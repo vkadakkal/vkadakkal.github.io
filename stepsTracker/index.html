@@ -15,6 +15,7 @@
             --row-even: #2a2a2a;
             --row-odd: #242424;
             --border-color: #3a3a3a;
+            --header-bg: #252525;
         }
         body {
             background-color: var(--bg-dark);
@@ -85,6 +86,7 @@
             font-size: 0.95rem;
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
+            position: relative;
         }
         th, td {
             padding: 6px 8px;
@@ -93,14 +95,14 @@
             min-width: 60px;
             max-width: 90px;
             word-break: break-word;
-            background-color: var(--card-bg);
         }
         th {
-            background-color: #252525;
+            background-color: var(--header-bg);
             font-weight: bold;
             position: sticky;
             top: 0;
             font-size: 0.98rem;
+            z-index: 2;
         }
         tr:nth-child(even) {
             background-color: var(--row-even);
@@ -151,18 +153,39 @@
         .status-banner.error { background-color: #f44336; color: white; }
         .status-banner.info { background-color: #2196F3; color: white; }
         .status-banner.warning { background-color: #ff9800; color: white; }
-        /* Sticky columns for horizontal scrolling */
+        
+        /* Fixed sticky column CSS */
         .sticky-col {
             position: sticky;
             left: 0;
-            z-index: 2;
-            background: var(--card-bg);
-            box-shadow: 2px 0 2px -1px #0006;
+            z-index: 3;
+            background: inherit;
+            box-shadow: 2px 0 2px -1px rgba(0,0,0,0.4);
         }
         .sticky-col-header {
-            z-index: 3;
-            background: #252525;
+            z-index: 4;
+            background: var(--header-bg);
         }
+        /* Background for sticky cells */
+        .sticky-col {
+            background-color: var(--card-bg);
+        }
+        tr:nth-child(even) .sticky-col {
+            background-color: var(--row-even);
+        }
+        tr:nth-child(odd) .sticky-col {
+            background-color: var(--row-odd);
+        }
+        .leaderboard tr:first-child .sticky-col {
+            background-color: #3d2800;
+        }
+        .leaderboard tr:nth-child(2) .sticky-col {
+            background-color: #2a2a2a;
+        }
+        .leaderboard tr:nth-child(3) .sticky-col {
+            background-color: #322100;
+        }
+        
         @media (max-width: 600px) {
             th, td {
                 padding: 4px 4px;
@@ -185,6 +208,9 @@
             }
             .controls {
                 gap: 6px;
+            }
+            .sticky-col {
+                box-shadow: 1px 0 1px -1px rgba(0,0,0,0.4);
             }
         }
         @media (max-width: 400px) {
@@ -340,16 +366,23 @@
                 const medals = ['🥇', '🥈', '🥉'];
                 usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
+                    
+                    // Rank cell (sticky)
                     const rankCell = document.createElement('td');
                     rankCell.textContent = medals[index] || (index + 1);
                     rankCell.classList.add('sticky-col');
                     row.appendChild(rankCell);
+                    
+                    // Name cell
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
                     row.appendChild(nameCell);
+                    
+                    // Steps cell
                     const stepsCell = document.createElement('td');
                     stepsCell.textContent = user.totalSteps.toLocaleString();
                     row.appendChild(stepsCell);
+                    
                     leaderboard.appendChild(row);
                 });
             },
@@ -360,15 +393,17 @@
                 const tbody = table.querySelector('tbody');
                 thead.innerHTML = '';
                 tbody.innerHTML = '';
+                
                 // Display dates in reverse chronological order (newest first)
                 const displayDates = [...this.dates].reverse();
 
-                // Sticky first header cell
+                // Sticky header cell
                 const thName = document.createElement('th');
                 thName.textContent = 'User';
                 thName.classList.add('sticky-col', 'sticky-col-header');
                 thead.appendChild(thName);
 
+                // Date headers
                 displayDates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
@@ -379,14 +414,17 @@
                     thead.appendChild(th);
                 });
 
+                // User rows
                 for (const user of this.users) {
                     const row = document.createElement('tr');
+                    
                     // Sticky user name cell
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
                     nameCell.classList.add('sticky-col');
                     row.appendChild(nameCell);
 
+                    // Step cells
                     for (const date of displayDates) {
                         const stepCell = document.createElement('td');
                         const stepCount = await this.getStepsForUserAndDate(user.id, date);
