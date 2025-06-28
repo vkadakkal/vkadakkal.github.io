@@ -187,8 +187,6 @@
 <body>
     <h1>Step Tracker</h1>
     <div id="status-banner" class="status-banner"></div>
-    <div class="error" id="name-error">User name already exists!</div>
-    
     <h2>Leaderboard</h2>
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
@@ -203,13 +201,11 @@
             <tbody></tbody>
         </table>
     </div>
-    
     <div class="controls">
         <button class="nav-button" id="prev-dates">&lt;&lt;</button>
         <div class="date-display" id="date-range"></div>
         <button class="nav-button" id="next-dates">&gt;&gt;</button>
     </div>
-    
     <h2>Daily Steps</h2>
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
@@ -223,19 +219,16 @@
             <tbody></tbody>
         </table>
     </div>
-    
-    <button id="save-btn">Save Data</button>
+    <button id="save-btn">Save Data to JSON</button>
 
-    <!-- Include Supabase client -->
+    <!-- Supabase client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        // Initialize Supabase client
-        // !! REPLACE WITH YOUR OWN SUPABASE URL AND ANON KEY !!
+        // Replace with your own Supabase credentials
         const SUPABASE_URL = 'https://chrncxaqgzpjsypuminf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocm5jeGFxZ3pwanN5cHVtaW5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwMzk2MjUsImV4cCI6MjA2NjYxNTYyNX0.vhZkMW-oBl5aPxMO51HMyEVODq1Fj6xmx6vROubnZos';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Status helper
         function showStatus(message, type = "info", details = null) {
             const banner = document.getElementById('status-banner');
             banner.textContent = message + (details ? ` (${details})` : '');
@@ -250,7 +243,7 @@
             dates: [],
             currentStartDate: null,
             initialized: false,
-            
+
             async init() {
                 this.currentStartDate = new Date();
                 this.currentStartDate.setDate(this.currentStartDate.getDate() - 13); // Start 13 days ago
@@ -258,33 +251,27 @@
                 this.updateDateWindow();
                 await this.render();
                 this.initialized = true;
-                
-                // Set up event listeners
+
                 document.addEventListener('blur', this.handleEdit.bind(this), true);
                 document.getElementById('save-btn').addEventListener('click', this.saveToJSON.bind(this));
                 document.getElementById('prev-dates').addEventListener('click', () => this.shiftDates(-1));
                 document.getElementById('next-dates').addEventListener('click', () => this.shiftDates(1));
             },
-            
+
             async shiftDates(direction) {
-                // Shift the start date by 1 day in the specified direction
                 this.currentStartDate.setDate(this.currentStartDate.getDate() + direction);
                 this.updateDateWindow();
                 await this.render();
             },
-            
+
             updateDateWindow() {
                 this.dates = [];
                 const startDate = new Date(this.currentStartDate);
-                
-                // Generate 14 dates starting from the current start date
                 for (let i = 0; i < 14; i++) {
                     const date = new Date(startDate);
                     date.setDate(date.getDate() + i);
                     this.dates.push(date.toISOString().split('T')[0]);
                 }
-                
-                // Update the date range display
                 const startStr = new Date(this.dates[0]).toLocaleDateString('en-US', {
                     weekday: 'short', month: 'short', day: 'numeric'
                 });
@@ -293,27 +280,24 @@
                 });
                 document.getElementById('date-range').textContent = `${startStr} - ${endStr}`;
             },
-            
+
             async loadUsers() {
                 showStatus('Loading users...', 'info');
                 const { data: users, error: usersError } = await supabase
                     .from('users')
                     .select('id, name');
-                
                 if (usersError) {
                     showStatus('Error loading users', 'error', usersError.message);
                     return;
                 }
-                
                 if (!users || users.length === 0) {
                     showStatus('No users found. Please add users in your Supabase dashboard.', 'warning');
                     return;
                 }
-                
                 this.users = users;
                 showStatus(`Loaded ${users.length} users`, 'success');
             },
-            
+
             async getStepsForUserAndDate(userId, date) {
                 const { data: step, error } = await supabase
                     .from('steps')
@@ -321,24 +305,20 @@
                     .eq('user_id', userId)
                     .eq('date', date)
                     .maybeSingle();
-                
-                if (error && error.code !== 'PGRST116') { // Ignore "no rows found"
+                if (error && error.code !== 'PGRST116') {
                     showStatus('Error loading steps', 'error', error.message);
                 }
-                
                 return step ? step.step_count : 0;
             },
-            
+
             async render() {
                 await this.renderLeaderboard();
                 await this.renderStepsTable();
             },
-            
+
             async renderLeaderboard() {
                 const leaderboard = document.querySelector('#leaderboard tbody');
                 leaderboard.innerHTML = '';
-                
-                // For each user, sum their steps for the current date range
                 const usersWithTotals = await Promise.all(this.users.map(async user => {
                     const steps = await Promise.all(
                         this.dates.map(date => this.getStepsForUserAndDate(user.id, date))
@@ -346,11 +326,7 @@
                     const totalSteps = steps.reduce((sum, step) => sum + step, 0);
                     return { ...user, totalSteps };
                 }));
-                
-                // Sort by total steps descending
                 usersWithTotals.sort((a, b) => b.totalSteps - a.totalSteps);
-                
-                // Display top 3
                 const medals = ['🥇', '🥈', '🥉'];
                 usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
@@ -362,45 +338,28 @@
                     leaderboard.appendChild(row);
                 });
             },
-            
+
             async renderStepsTable() {
                 const table = document.getElementById('steps-table');
                 const thead = table.querySelector('thead tr');
                 const tbody = table.querySelector('tbody');
-                
-                // Clear existing columns (except user column)
-                while (thead.children.length > 1) {
-                    thead.removeChild(thead.lastChild);
-                }
-                
+                while (thead.children.length > 1) thead.removeChild(thead.lastChild);
                 tbody.innerHTML = '';
-                
-                // Add date headers
                 this.dates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: '2-digit'
+                        weekday: 'short', month: 'short', day: '2-digit'
                     });
-                    
                     const th = document.createElement('th');
                     th.textContent = formattedDate;
                     thead.appendChild(th);
                 });
-                
-                // Add user rows
                 for (const user of this.users) {
                     const row = document.createElement('tr');
-                    
-                    // User name cell (editable)
+                    // User name cell (not editable)
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
-                    nameCell.classList.add('editable');
-                    nameCell.setAttribute('data-user-id', user.id);
-                    nameCell.contentEditable = true;
                     row.appendChild(nameCell);
-                    
                     // Step cells (editable)
                     for (const date of this.dates) {
                         const stepCell = document.createElement('td');
@@ -412,86 +371,36 @@
                         stepCell.contentEditable = true;
                         row.appendChild(stepCell);
                     }
-                    
                     tbody.appendChild(row);
                 }
             },
-            
+
             async handleEdit(event) {
                 if (!this.initialized) return;
-                
                 const target = event.target;
                 if (!target.classList.contains('editable')) return;
-                
                 const userId = parseInt(target.getAttribute('data-user-id'));
-                const user = this.users.find(u => u.id === userId);
-                
-                if (!user) return;
-                
-                // Handle name edit
-                if (!target.hasAttribute('data-date')) {
-                    const newName = target.textContent.trim();
-                    
-                    // Check if name exists
-                    const { data: existingUser, error: checkError } = await supabase
-                        .from('users')
-                        .select('id')
-                        .eq('name', newName)
-                        .neq('id', userId)
-                        .maybeSingle();
-                    
-                    if (checkError) {
-                        showStatus('Error checking name', 'error', checkError.message);
-                        return;
-                    }
-                    
-                    if (existingUser) {
-                        showStatus('Name already exists!', 'error');
-                        target.textContent = user.name;
-                        return;
-                    }
-                    
-                    showStatus(`Updating user ${user.id} name...`, 'info');
-                    const { error } = await supabase
-                        .from('users')
-                        .update({ name: newName })
-                        .eq('id', userId);
-                    
-                    if (error) {
-                        showStatus('Failed to update name', 'error', error.message);
-                        target.textContent = user.name;
-                    } else {
-                        user.name = newName;
-                        showStatus('Name updated!', 'success');
-                    }
-                } 
-                // Handle step edit
-                else {
-                    const date = target.getAttribute('data-date');
-                    const newSteps = parseInt(target.textContent.replace(/,/g, '')) || 0;
-                    
-                    showStatus(`Updating steps for user ${user.id} on ${date}...`, 'info');
-                    const { error } = await supabase
-                        .from('steps')
-                        .upsert({ user_id: userId, date, step_count: newSteps });
-                    
-                    if (error) {
-                        showStatus('Failed to update step count', 'error', error.message);
-                    } else {
-                        showStatus('Step count updated!', 'success');
-                    }
+                const date = target.getAttribute('data-date');
+                const newSteps = parseInt(target.textContent.replace(/,/g, '')) || 0;
+                showStatus(`Updating steps for user ${userId} on ${date}...`, 'info');
+                // Use upsert to allow overwrites
+                const { error } = await supabase
+                    .from('steps')
+                    .upsert({ user_id: userId, date, step_count: newSteps });
+                if (error) {
+                    showStatus('Failed to update step count', 'error', error.message);
+                } else {
+                    showStatus('Step count updated!', 'success');
                 }
                 this.renderLeaderboard();
             },
-            
+
             async saveToJSON() {
-                // Collect all steps for all users and the current date range
                 const data = {
                     users: this.users,
                     dates: this.dates,
                     steps: []
                 };
-                
                 for (const user of this.users) {
                     for (const date of this.dates) {
                         const stepCount = await this.getStepsForUserAndDate(user.id, date);
@@ -502,23 +411,18 @@
                         });
                     }
                 }
-                
                 const dataStr = JSON.stringify(data, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
-                
-                // Create download link
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 a.download = 'steps.json';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                
                 showStatus('Data saved to steps.json!', 'success');
             }
         };
-        
-        // Initialize the app
+
         document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
