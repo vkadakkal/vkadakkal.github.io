@@ -28,8 +28,7 @@ export default function OutputTab({ type }) {
           
           // Process demand
           project.demand.forEach(d => {
-            months[d.month] = (months[d.month] || 0) + 
-                              (project.scaling_factor * d.fte);
+            months[d.month] = (months[d.month] || 0) + (project.scaling_factor * d.fte);
           });
           
           // Subtract allocations
@@ -39,7 +38,7 @@ export default function OutputTab({ type }) {
           
           return {
             id: project.id,
-           404 name: project.name, // <-- Remove 404
+            name: project.name,
             months: Object.entries(months).map(([month, value]) => ({
               month,
               value
@@ -90,9 +89,7 @@ export default function OutputTab({ type }) {
   }, [supabase, type]);
 
   // Get unique months from all data
-  const allMonths = [...new Set(data.flatMap(item => 
-    item.months.map(m => m.month)
-  ))].sort();
+  const allMonths = [...new Set(data.flatMap(item => item.months.map(m => m.month)))].sort();
 
   return (
     <div className="overflow-x-auto">
@@ -115,13 +112,10 @@ export default function OutputTab({ type }) {
                 const monthData = item.months.find(m => m.month === month);
                 const value = monthData ? monthData.value : 0;
                 const isNegative = value < 0;
-                
                 return (
                   <td 
                     key={`${item.id}-${month}`} 
-                    className={`border-b border-border p-3 ${
-                      isNegative ? 'text-red-400' : 'text-green-400'
-                    }`}
+                    className={`border-b border-border p-3 ${isNegative ? 'text-red-400' : 'text-green-400'}`}
                   >
                     {value.toFixed(2)}
                   </td>
