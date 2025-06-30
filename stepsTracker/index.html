@@ -57,7 +57,7 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content:极
+            justify-content: center;
             transition: all 0.3s ease;
         }
         .nav-button:hover {
@@ -125,7 +125,6 @@
             outline: 2px solid var(--accent);
             background-color: #2a2a2a;
         }
-        /* Leaderboard styles */
         .leaderboard tr:first-child {
             background-color: #3d2800;
             color: gold;
@@ -139,7 +138,6 @@
             background-color: #322100;
             color: #cd7f32;
         }
-        /* Status banner styles */
         .status-banner {
             padding: 8px;
             margin: 8px auto;
@@ -156,7 +154,6 @@
         .status-banner.error { background-color: #f44336; color: white; }
         .status-banner.info { background-color: #2196F3; color: white; }
         .status-banner.warning { background-color: #ff9800; color: white; }
-        /* Sticky columns */
         .sticky-col {
             position: sticky;
             left: 0;
@@ -183,7 +180,6 @@
         .leaderboard tr:nth-child(3) .sticky-col {
             background-color: #322100;
         }
-        /* Daily leader row */
         .daily-leader-row {
             background-color: var(--leader-bg);
             font-weight: bold;
@@ -204,7 +200,7 @@
         }
         @media (max-width: 600px) {
             th, td {
-                padding: 3px 2极
+                padding: 3px 2px;
                 font-size: 0.7rem;
                 min-width: 40px;
                 max-width: 60px;
@@ -272,7 +268,11 @@
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
         <table id="steps-table">
-            <thead></thead>
+            <thead>
+                <tr>
+                    <th class="sticky-col sticky-col-header">User</th>
+                </tr>
+            </thead>
             <tbody></tbody>
         </table>
     </div>
@@ -288,18 +288,10 @@
             banner._timeout = setTimeout(() => { banner.style.display = 'none'; }, 5000);
         }
 
-        // Simulate Supabase config
-        const SUPABASE_URL = 'https://your-project.supabase.co';
-        const SUPABASE_KEY = 'your-anon-key';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let supabase; // Will be set after config loads
 
         const app = {
-            users: [
-                {id: 1, name: "Alice"},
-                {id: 2, name: "Bob"},
-                {id: 3, name: "Charlie"},
-                {id: 4, name: "Diana"}
-            ],
+            users: [],
             dates: [],
             currentStartDate: null,
             initialized: false,
@@ -307,13 +299,14 @@
             async init() {
                 this.currentStartDate = new Date();
                 this.currentStartDate.setDate(this.currentStartDate.getDate() - 13); // Start 13 days ago
+                await this.loadUsers();
                 this.updateDateWindow();
                 await this.render();
                 this.initialized = true;
 
                 document.addEventListener('blur', this.handleEdit.bind(this), true);
                 document.getElementById('prev-dates').addEventListener('click', () => this.shiftDates(-1));
-                document.getElementById('next-dates').addEventListener('click', () => this.sh极
+                document.getElementById('next-dates').addEventListener('click', () => this.shiftDates(1));
             },
 
             async shiftDates(direction) {
@@ -339,17 +332,52 @@
                 document.getElementById('date-range').textContent = `${startStr} - ${endStr}`;
             },
 
+            async loadUsers() {
+                showStatus('Loading users...', 'info');
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('id, name');
+                if (usersError) {
+                    showStatus('Error loading users', 'error', usersError.message);
+                    return;
+                }
+                if (!users || users.length === 0) {
+                    showStatus('No users found. Please add users in your Supabase dashboard.', 'warning');
+                    return;
+                }
+                this.users = users;
+                showStatus(`Loaded ${users.length} users`, 'success');
+            },
+
             async getStepsForUserAndDate(userId, date) {
-                // Simulate API call
-                return Math.floor(Math.random() * 10000);
+                const { data: step, error } = await supabase
+                    .from('steps')
+                    .select('step_count')
+                    .eq('user_id', userId)
+                    .eq('date', date)
+                    .maybeSingle();
+                if (error && error.code !== 'PGRST116') {
+                    showStatus('Error loading steps', 'error', error.message);
+                }
+                return step ? step.step_count : 0;
             },
 
             async getDailyLeader(date) {
-                // Simulate API call
-                const user = this.users[Math.floor(Math.random() * this.users.length)];
+                const { data: steps, error } = await supabase
+                    .from('steps')
+                    .select('user_id, step_count')
+                    .eq('date', date)
+                    .order('step_count', { ascending: false });
+                
+                if (error || !steps || steps.length === 0) {
+                    return { name: '-', steps: 0 };
+                }
+                
+                const topStep = steps[0];
+                const user = this.users.find(u => u.id === topStep.user_id);
                 return {
-                    name: user.name,
-                    steps: Math.floor(Math.random() * 20000)
+                    name: user ? user.name : 'Unknown',
+                    steps: topStep.step_count
                 };
             },
 
@@ -361,16 +389,16 @@
             async renderLeaderboard() {
                 const leaderboard = document.querySelector('#leaderboard tbody');
                 leaderboard.innerHTML = '';
-                
-                // Add sample data
-                const sampleData = [
-                    {name: "Alice", totalSteps: 123456},
-                    {name: "Bob", totalSteps: 112233},
-                    {name: "Charlie", totalSteps: 98765}
-                ];
-                
+                const usersWithTotals = await Promise.all(this.users.map(async user => {
+                    const steps = await Promise.all(
+                        this.dates.map(date => this.getStepsForUserAndDate(user.id, date))
+                    );
+                    const totalSteps = steps.reduce((sum, step) => sum + step, 0);
+                    return { ...user, totalSteps };
+                }));
+                usersWithTotals.sort((a, b) => b.totalSteps - a.totalSteps);
                 const medals = ['🥇', '🥈', '🥉'];
-                sampleData.forEach((user, index) => {
+                usersWithTotals.slice(0, 3).forEach((user, index) => {
                     const row = document.createElement('tr');
                     
                     // Rank cell (sticky)
@@ -397,8 +425,7 @@
                 const table = document.getElementById('steps-table');
                 const thead = table.querySelector('thead');
                 const tbody = table.querySelector('tbody');
-                
-                // Clear existing content
+                // FIX: Clear header and body before rendering
                 thead.innerHTML = '';
                 tbody.innerHTML = '';
                 
@@ -411,7 +438,6 @@
                 thName.textContent = 'User';
                 thName.classList.add('sticky-col', 'sticky-col-header');
                 headerRow.appendChild(thName);
-                
                 displayDates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
@@ -430,7 +456,6 @@
                 leaderLabelCell.textContent = 'Daily Leader';
                 leaderLabelCell.classList.add('sticky-col', 'sticky-col-header');
                 leaderRow.appendChild(leaderLabelCell);
-                
                 for (const date of displayDates) {
                     const leader = await this.getDailyLeader(date);
                     const leaderCell = document.createElement('td');
@@ -450,7 +475,6 @@
                     nameCell.textContent = user.name;
                     nameCell.classList.add('sticky-col');
                     row.appendChild(nameCell);
-                    
                     for (const date of displayDates) {
                         const stepCell = document.createElement('td');
                         const stepCount = await this.getStepsForUserAndDate(user.id, date);
@@ -473,19 +497,38 @@
                 const date = target.getAttribute('data-date');
                 const newSteps = parseInt(target.textContent.replace(/,/g, '')) || 0;
                 showStatus(`Updating steps for user ${userId} on ${date}...`, 'info');
-                
-                // Simulate update
-                setTimeout(() => {
+                const { error } = await supabase
+                    .from('steps')
+                    .upsert(
+                        { user_id: userId, date, step_count: newSteps },
+                        { onConflict: 'user_id,date' }
+                    );
+                if (error) {
+                    showStatus('Failed to update step count', 'error', error.message);
+                } else {
                     showStatus('Step count updated!', 'success');
-                }, 1000);
-                
-                await this.renderStepsTable();
+                    await this.renderStepsTable();
+                }
                 this.renderLeaderboard();
             }
         };
 
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', () => app.init());
+        // Load config.json, then start app
+        fetch('config.json')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load config');
+                return response.json();
+            })
+            .then(config => {
+                if (!config.supabase || !config.supabase.url || !config.supabase.key) {
+                    throw new Error('Invalid config: missing supabase.url or supabase.key');
+                }
+                supabase = window.supabase.createClient(config.supabase.url, config.supabase.key);
+                app.init();
+            })
+            .catch(err => {
+                showStatus("Failed to load config.json: " + err, "error");
+            });
     </script>
 </body>
 </html>
