@@ -434,6 +434,21 @@
                 
                 // Display dates in reverse chronological order (newest first)
                 const displayDates = [...this.dates].reverse();
+				
+                // Display dates starting from today (today is first column)
+                const todayStr = new Date().toISOString().split('T')[0];
+                let todayIndex = this.dates.indexOf(todayStr);
+                let displayDates;
+                if (todayIndex !== -1) {
+                    // Slice dates so that today is first, then the following days
+                    displayDates = this.dates.slice(todayIndex).concat(this.dates.slice(0, todayIndex));
+                } else {
+                    // Fallback: just use dates as is
+                    displayDates = [...this.dates].reverse();
+                }
+				
+				
+				
 
                 // Create header row for dates
                 const headerRow = document.createElement('tr');
