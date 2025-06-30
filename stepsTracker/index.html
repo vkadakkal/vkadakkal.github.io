@@ -16,6 +16,7 @@
             --row-odd: #242424;
             --border-color: #3a3a3a;
             --header-bg: #252525;
+            --leader-bg: #2d2d2d;
         }
         body {
             background-color: var(--bg-dark);
@@ -43,6 +44,7 @@
             font-weight: bold;
             min-width: 180px;
             text-align: center;
+            color: var(--accent);
         }
         .nav-button {
             background-color: var(--button-bg);
@@ -83,7 +85,7 @@
             min-width: 480px;
             border-radius: var(--border-radius);
             overflow: hidden;
-            font-size: 0.95rem;
+            font-size: 0.85rem; /* Reduced font size */
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             position: relative;
@@ -101,7 +103,6 @@
             font-weight: bold;
             position: sticky;
             top: 0;
-            font-size: 0.98rem;
             z-index: 2;
         }
         tr:nth-child(even) {
@@ -154,17 +155,15 @@
         .status-banner.info { background-color: #2196F3; color: white; }
         .status-banner.warning { background-color: #ff9800; color: white; }
         
-        /* Fixed sticky column CSS */
+        /* Sticky columns */
         .sticky-col {
             position: sticky;
             left: 0;
             z-index: 3;
-            background: inherit;
             box-shadow: 2px 0 2px -1px rgba(0,0,0,0.4);
         }
         .sticky-col-header {
             z-index: 4;
-            background: var(--header-bg);
         }
         /* Background for sticky cells */
         .sticky-col {
@@ -186,19 +185,39 @@
             background-color: #322100;
         }
         
+        /* Daily leader row */
+        .daily-leader-row {
+            background-color: var(--leader-bg);
+            font-weight: bold;
+        }
+        .daily-leader-cell {
+            padding: 4px 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .daily-leader-name {
+            color: gold;
+            font-weight: bold;
+        }
+        .daily-leader-steps {
+            color: var(--accent);
+        }
+        
         @media (max-width: 600px) {
             th, td {
                 padding: 4px 4px;
-                font-size: 0.85rem;
+                font-size: 0.75rem;
                 min-width: 44px;
                 max-width: 64px;
             }
             table {
-                font-size: 0.85rem;
+                font-size: 0.75rem;
                 min-width: 340px;
             }
             .date-display {
-                font-size: 0.93rem;
+                font-size: 0.9rem;
                 min-width: 100px;
             }
             .nav-button {
@@ -212,15 +231,19 @@
             .sticky-col {
                 box-shadow: 1px 0 1px -1px rgba(0,0,0,0.4);
             }
+            .daily-leader-cell {
+                font-size: 0.7rem;
+                padding: 2px 3px;
+            }
         }
         @media (max-width: 400px) {
             th, td {
-                font-size: 0.78rem;
+                font-size: 0.7rem;
                 min-width: 38px;
                 max-width: 48px;
             }
             .date-display {
-                font-size: 0.82rem;
+                font-size: 0.8rem;
                 min-width: 60px;
             }
         }
@@ -260,9 +283,6 @@
             <tbody></tbody>
         </table>
     </div>
-
-    <br>
-    <br>
 
     <!-- Supabase client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -350,6 +370,25 @@
                 return step ? step.step_count : 0;
             },
 
+            async getDailyLeader(date) {
+                const { data: steps, error } = await supabase
+                    .from('steps')
+                    .select('user_id, step_count')
+                    .eq('date', date)
+                    .order('step_count', { ascending: false });
+                
+                if (error || !steps || steps.length === 0) {
+                    return { name: '-', steps: 0 };
+                }
+                
+                const topStep = steps[0];
+                const user = this.users.find(u => u.id === topStep.user_id);
+                return {
+                    name: user ? user.name : 'Unknown',
+                    steps: topStep.step_count
+                };
+            },
+
             async render() {
                 await this.renderLeaderboard();
                 await this.renderStepsTable();
@@ -392,7 +431,7 @@
 
             async renderStepsTable() {
                 const table = document.getElementById('steps-table');
-                const thead = table.querySelector('thead tr');
+                const thead = table.querySelector('thead');
                 const tbody = table.querySelector('tbody');
                 thead.innerHTML = '';
                 tbody.innerHTML = '';
@@ -400,11 +439,14 @@
                 // Display dates in reverse chronological order (newest first)
                 const displayDates = [...this.dates].reverse();
 
-                // Sticky header cell
+                // Create header row for dates
+                const headerRow = document.createElement('tr');
+                
+                // Sticky header cell for user column
                 const thName = document.createElement('th');
                 thName.textContent = 'User';
                 thName.classList.add('sticky-col', 'sticky-col-header');
-                thead.appendChild(thName);
+                headerRow.appendChild(thName);
 
                 // Date headers
                 displayDates.forEach(dateStr => {
@@ -414,8 +456,32 @@
                     });
                     const th = document.createElement('th');
                     th.textContent = formattedDate;
-                    thead.appendChild(th);
+                    headerRow.appendChild(th);
                 });
+                thead.appendChild(headerRow);
+                
+                // Create daily leader row
+                const leaderRow = document.createElement('tr');
+                leaderRow.classList.add('daily-leader-row');
+                
+                // First cell for leader row
+                const leaderLabelCell = document.createElement('th');
+                leaderLabelCell.textContent = 'Daily Leader';
+                leaderLabelCell.classList.add('sticky-col', 'sticky-col-header');
+                leaderRow.appendChild(leaderLabelCell);
+                
+                // Get daily leaders for each date
+                for (const date of displayDates) {
+                    const leader = await this.getDailyLeader(date);
+                    const leaderCell = document.createElement('td');
+                    leaderCell.classList.add('daily-leader-cell');
+                    leaderCell.innerHTML = `
+                        <div class="daily-leader-name">${leader.name}</div>
+                        <div class="daily-leader-steps">${leader.steps.toLocaleString()}</div>
+                    `;
+                    leaderRow.appendChild(leaderCell);
+                }
+                thead.appendChild(leaderRow);
 
                 // User rows
                 for (const user of this.users) {
@@ -461,6 +527,8 @@
                     showStatus('Failed to update step count', 'error', error.message);
                 } else {
                     showStatus('Step count updated!', 'success');
+                    // Refresh the daily leaders and step counts
+                    await this.renderStepsTable();
                 }
                 this.renderLeaderboard();
             }
