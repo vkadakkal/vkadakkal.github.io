@@ -81,13 +81,13 @@
         table {
             border-collapse: separate;
             border-spacing: 0;
-            width: 100%;
+            width: 极
             min-width: 480px;
             border-radius: var(--border-radius);
             overflow: hidden;
             font-size: 0.85rem;
             background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border极
             position: relative;
         }
         th, td {
@@ -262,20 +262,18 @@
     <div class="controls">
         <button class="nav-button" id="prev-dates">&lt;&lt;</button>
         <div class="date-display" id="date-range"></div>
-        <button class="nav-button" id="next-dates">&gt;&gt;</button>
+        <button class="nav-button" id极
+        &gt;&gt;</button>
     </div>
     <h2>Daily Steps</h2>
     <div class="table-container">
         <div class="scroll-notice" aria-hidden="true">Scroll horizontally →</div>
         <table id="steps-table">
-            <thead>
-                <tr>
-                    <th class="sticky-col sticky-col-header">User</th>
-                </tr>
-            </thead>
+            <thead></thead>
             <tbody></tbody>
         </table>
     </div>
+
     <!-- Supabase client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
@@ -423,11 +421,14 @@
 
             async renderStepsTable() {
                 const table = document.getElementById('steps-table');
-                const thead = table.querySelector('thead');
-                const tbody = table.querySelector('tbody');
-                // FIX: Clear header and body before rendering
-                thead.innerHTML = '';
-                tbody.innerHTML = '';
+                
+                // Create new table structure instead of modifying existing one
+                const newTable = document.createElement('table');
+                newTable.id = 'steps-table';
+                newTable.innerHTML = '<thead></thead><tbody></tbody>';
+                
+                const thead = newTable.querySelector('thead');
+                const tbody = newTable.querySelector('tbody');
                 
                 // Display dates in reverse chronological order (newest first)
                 const displayDates = [...this.dates].reverse();
@@ -487,6 +488,9 @@
                     }
                     tbody.appendChild(row);
                 }
+                
+                // Replace the old table with the new one
+                table.parentNode.replaceChild(newTable, table);
             },
 
             async handleEdit(event) {
