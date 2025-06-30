@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step Tracker</title>
+    <title>4 friends Steps Tracker</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -154,8 +154,6 @@
         .status-banner.error { background-color: #f44336; color: white; }
         .status-banner.info { background-color: #2196F3; color: white; }
         .status-banner.warning { background-color: #ff9800; color: white; }
-        
-        /* Sticky columns */
         .sticky-col {
             position: sticky;
             left: 0;
@@ -182,7 +180,6 @@
         .leaderboard tr:nth-child(3) .sticky-col {
             background-color: #322100;
         }
-        /* Daily leader row */
         .daily-leader-row {
             background-color: var(--leader-bg);
             font-weight: bold;
@@ -246,7 +243,7 @@
     </style>
 </head>
 <body>
-    <h1>Step Tracker</h1>
+    <h1>4 friends Steps Tracker</h1>
     <div id="status-banner" class="status-banner"></div>
     <h2>Leaderboard</h2>
     <div class="table-container">
@@ -279,7 +276,6 @@
             <tbody></tbody>
         </table>
     </div>
-
     <!-- Supabase client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
@@ -429,6 +425,7 @@
                 const table = document.getElementById('steps-table');
                 const thead = table.querySelector('thead');
                 const tbody = table.querySelector('tbody');
+                // FIX: Clear header and body before rendering
                 thead.innerHTML = '';
                 tbody.innerHTML = '';
                 
@@ -500,7 +497,6 @@
                 const date = target.getAttribute('data-date');
                 const newSteps = parseInt(target.textContent.replace(/,/g, '')) || 0;
                 showStatus(`Updating steps for user ${userId} on ${date}...`, 'info');
-                // Use upsert with onConflict to handle unique constraint
                 const { error } = await supabase
                     .from('steps')
                     .upsert(
