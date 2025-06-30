@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step Tracker</title>
+    <title>4 Friends Steps Tracker</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -85,13 +85,13 @@
             min-width: 480px;
             border-radius: var(--border-radius);
             overflow: hidden;
-            font-size: 0.75rem; /* Reduced font size */
+            font-size: 0.85rem;
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             position: relative;
         }
         th, td {
-            padding: 6px 8px;
+            padding: 5px 6px;
             text-align: center;
             border: 1px solid var(--border-color);
             min-width: 60px;
@@ -160,14 +160,12 @@
             position: sticky;
             left: 0;
             z-index: 3;
+            background-color: var(--card-bg);
             box-shadow: 2px 0 2px -1px rgba(0,0,0,0.4);
         }
         .sticky-col-header {
             z-index: 4;
-        }
-        /* Background for sticky cells */
-        .sticky-col {
-            background-color: var(--card-bg);
+            background-color: var(--header-bg);
         }
         tr:nth-child(even) .sticky-col {
             background-color: var(--row-even);
@@ -184,15 +182,14 @@
         .leaderboard tr:nth-child(3) .sticky-col {
             background-color: #322100;
         }
-        
         /* Daily leader row */
         .daily-leader-row {
             background-color: var(--leader-bg);
             font-weight: bold;
         }
         .daily-leader-cell {
-            padding: 4px 6px;
-            font-size: 0.8rem;
+            padding: 3px 4px;
+            font-size: 0.78rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -204,16 +201,15 @@
         .daily-leader-steps {
             color: var(--accent);
         }
-        
         @media (max-width: 600px) {
             th, td {
-                padding: 4px 4px;
-                font-size: 0.75rem;
-                min-width: 44px;
-                max-width: 64px;
+                padding: 3px 2px;
+                font-size: 0.7rem;
+                min-width: 40px;
+                max-width: 60px;
             }
             table {
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 min-width: 340px;
             }
             .date-display {
@@ -232,15 +228,15 @@
                 box-shadow: 1px 0 1px -1px rgba(0,0,0,0.4);
             }
             .daily-leader-cell {
-                font-size: 0.7rem;
-                padding: 2px 3px;
+                font-size: 0.6rem;
+                padding: 2px 2px;
             }
         }
         @media (max-width: 400px) {
             th, td {
-                font-size: 0.7rem;
-                min-width: 38px;
-                max-width: 48px;
+                font-size: 0.58rem;
+                min-width: 32px;
+                max-width: 38px;
             }
             .date-display {
                 font-size: 0.8rem;
@@ -250,7 +246,7 @@
     </style>
 </head>
 <body>
-    <h1>4 Friends Steps Tracker</h1>
+    <h1>Steps Tracker</h1>
     <div id="status-banner" class="status-banner"></div>
     <h2>Leaderboard</h2>
     <div class="table-container">
@@ -441,14 +437,10 @@
 
                 // Create header row for dates
                 const headerRow = document.createElement('tr');
-                
-                // Sticky header cell for user column
                 const thName = document.createElement('th');
                 thName.textContent = 'User';
                 thName.classList.add('sticky-col', 'sticky-col-header');
                 headerRow.appendChild(thName);
-
-                // Date headers
                 displayDates.forEach(dateStr => {
                     const date = new Date(dateStr);
                     const formattedDate = date.toLocaleDateString('en-US', {
@@ -463,14 +455,10 @@
                 // Create daily leader row
                 const leaderRow = document.createElement('tr');
                 leaderRow.classList.add('daily-leader-row');
-                
-                // First cell for leader row
                 const leaderLabelCell = document.createElement('th');
                 leaderLabelCell.textContent = 'Daily Leader';
                 leaderLabelCell.classList.add('sticky-col', 'sticky-col-header');
                 leaderRow.appendChild(leaderLabelCell);
-                
-                // Get daily leaders for each date
                 for (const date of displayDates) {
                     const leader = await this.getDailyLeader(date);
                     const leaderCell = document.createElement('td');
@@ -486,14 +474,10 @@
                 // User rows
                 for (const user of this.users) {
                     const row = document.createElement('tr');
-                    
-                    // Sticky user name cell
                     const nameCell = document.createElement('td');
                     nameCell.textContent = user.name;
                     nameCell.classList.add('sticky-col');
                     row.appendChild(nameCell);
-
-                    // Step cells
                     for (const date of displayDates) {
                         const stepCell = document.createElement('td');
                         const stepCount = await this.getStepsForUserAndDate(user.id, date);
@@ -527,7 +511,6 @@
                     showStatus('Failed to update step count', 'error', error.message);
                 } else {
                     showStatus('Step count updated!', 'success');
-                    // Refresh the daily leaders and step counts
                     await this.renderStepsTable();
                 }
                 this.renderLeaderboard();
