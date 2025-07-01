@@ -301,7 +301,7 @@
 
             async init() {
                 this.currentStartDate = new Date();
-                this.currentStartDate.setDate(this.currentStartDate.getDate() - 13); // Start 13 days ago
+                this.currentStartDate.setDate(this.currentStartDate.getDate() - 6); // Start 13 days ago
                 await this.loadUsers();
                 this.updateDateWindow();
                 await this.render();
@@ -321,7 +321,7 @@
             updateDateWindow() {
                 this.dates = [];
                 const startDate = new Date(this.currentStartDate);
-                for (let i = 0; i < 14; i++) {
+                for (let i = 0; i < 7; i++) {
                     const date = new Date(startDate);
                     date.setDate(date.getDate() + i);
                     this.dates.push(date.toISOString().split('T')[0]);
@@ -329,7 +329,7 @@
                 const startStr = new Date(this.dates[0]).toLocaleDateString('en-US', {
                     weekday: 'short', month: 'short', day: 'numeric'
                 });
-                const endStr = new Date(this.dates[13]).toLocaleDateString('en-US', {
+                const endStr = new Date(this.dates[6]).toLocaleDateString('en-US', {
                     weekday: 'short', month: 'short', day: 'numeric'
                 });
                 document.getElementById('date-range').textContent = `${startStr} - ${endStr}`;
