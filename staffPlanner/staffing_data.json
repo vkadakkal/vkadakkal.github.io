@@ -83,8 +83,9 @@
       "2026-06": 1.0
     }
   },
-  "demand": {
-    "Project A": {
+  "demand": [
+    {
+      "project": "Project A",
       "domain": "Analysis",
       "scaling_factor": 1.0,
       "monthly_demand": {
@@ -102,7 +103,8 @@
         "2026-06": 2.0
       }
     },
-    "Project B": {
+    {
+      "project": "Project B",
       "domain": "Analysis",
       "scaling_factor": 1.0,
       "monthly_demand": {
@@ -120,7 +122,8 @@
         "2026-06": 0.0
       }
     },
-    "Project 3": {
+    {
+      "project": "Project 3",
       "domain": "Analysis",
       "scaling_factor": 1.0,
       "monthly_demand": {
@@ -138,7 +141,8 @@
         "2026-06": 0.0
       }
     },
-    "Project 4": {
+    {
+      "project": "Project 4",
       "domain": "Analysis",
       "scaling_factor": 1.0,
       "monthly_demand": {
@@ -154,13 +158,33 @@
         "2026-04": 0.0,
         "2026-05": 0.0,
         "2026-06": 0.0
+      }
+    },
+    {
+      "project": "Project A",
+      "domain": "HW",
+      "scaling_factor": 1.0,
+      "monthly_demand": {
+        "2025-07": 2.0,
+        "2025-08": 2.0,
+        "2025-09": 2.0,
+        "2025-10": 2.0,
+        "2025-11": 2.0,
+        "2025-12": 2.0,
+        "2026-01": 2.0,
+        "2026-02": 2.0,
+        "2026-03": 2.0,
+        "2026-04": 2.0,
+        "2026-05": 2.0,
+        "2026-06": 2.0
       }
     }
-  },
+  ],
   "allocation": [
     {
       "employee_id": "2",
-      "project": "Project 2",
+      "project": "Project 3",
+      "domain": "Analysis",
       "monthly_allocation": {
         "2025-07": 1.0,
         "2025-08": 1.0,
@@ -179,6 +203,7 @@
     {
       "employee_id": "2",
       "project": "Project A",
+      "domain": "Analysis",
       "monthly_allocation": {
         "2025-07": 0.0,
         "2025-08": 0.0,
@@ -197,24 +222,25 @@
     {
       "employee_id": "1",
       "project": "Project A",
+      "domain": "HW",
       "monthly_allocation": {
-        "2025-07": 0.0,
-        "2025-08": 0.0,
-        "2025-09": 0.0,
-        "2025-10": 0.0,
-        "2025-11": 0.0,
-        "2025-12": 0.0,
-        "2026-01": 0.0,
-        "2026-02": 0.0,
-        "2026-03": 0.0,
-        "2026-04": 0.0,
-        "2026-05": 0.0,
-        "2026-06": 0.0
+        "2025-07": 1.0,
+        "2025-08": 1.0,
+        "2025-09": 1.0,
+        "2025-10": 1.0,
+        "2025-11": 1.0,
+        "2025-12": 1.0,
+        "2026-01": 1.0,
+        "2026-02": 1.0,
+        "2026-03": 1.0,
+        "2026-04": 1.0,
+        "2026-05": 1.0,
+        "2026-06": 1.0
       }
     }
   ],
   "thresholds": {
-    "output1_red": 1.0,
+    "output1_red": 0.1,
     "output1_blue": 0.0,
     "output2_red": 1.2,
     "output2_blue": 0.6

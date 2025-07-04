@@ -51,7 +51,7 @@ class StaffingData:
         if not os.path.exists(self.filename):
             self.data = {
                 "employees": [],
-                "demand": {},
+                "demand": [],
                 "allocation": [],
                 "availability": {},
                 "thresholds": {
@@ -74,6 +74,8 @@ class StaffingData:
                         "output2_red": 1.2,
                         "output2_blue": 0.8
                     }
+                elif key in ["demand", "allocation"]:
+                    self.data[key] = []
                 else:
                     self.data[key] = {}
         self.ensure_availability()
@@ -354,7 +356,7 @@ class AvailabilityTab(QWidget):
             self.table.insertRow(row)
 
             emp_combo = QComboBox()
-            emp_names = [e["name"] for e in self.staffing_data.data["employees"]]
+            emp_names = [e["name"] for e in employees]
             emp_combo.addItems(emp_names)
             emp_combo.setCurrentText(emp["name"])
             emp_combo.setEnabled(True)
@@ -378,7 +380,7 @@ class AvailabilityTab(QWidget):
         self.table.insertRow(row)
 
         emp_combo = QComboBox()
-        emp_names = [e["name"] for e in self.staffing_data.data["employees"]]
+        emp_names = [e["name"] for e in employees]
         emp_combo.addItems(emp_names)
         emp_combo.setEnabled(True)
         self.table.setCellWidget(row, 0, emp_combo)
@@ -456,14 +458,13 @@ class AvailabilityTab(QWidget):
         self.table.setHorizontalHeaderLabels(headers)
         self.load_data()
 
-# --- DemandTab with Domain column ---
 class DemandTab(QWidget):
     def __init__(self, staffing_data, months, set_months_callback, parent=None):
         super().__init__(parent)
         self.staffing_data = staffing_data
         self.months = months
         self.set_months_callback = set_months_callback
-        self.table = DragFillTableWidget(0, len(self.months) + 3)  # +3: Project, Domain, Scaling
+        self.table = DragFillTableWidget(0, len(self.months) + 3)
         headers = ["Project", "Domain", "Scaling"] + [format_month(m) for m in self.months]
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -501,51 +502,59 @@ class DemandTab(QWidget):
         self.setLayout(layout)
 
     def load_data(self):
-        projects = list(self.staffing_data.data["demand"].keys())
-        self.table.setRowCount(len(projects))
-        for r, proj in enumerate(projects):
+        demand_list = self.staffing_data.data["demand"]
+        self.table.setRowCount(len(demand_list))
+        for r, entry in enumerate(demand_list):
             proj_combo = QComboBox()
-            proj_combo.addItems(list(self.staffing_data.data["demand"].keys()))
-            proj_combo.setCurrentText(proj)
+            projects = sorted({d["project"] for d in demand_list})
+            proj_combo.addItems(projects)
+            proj_combo.setCurrentText(entry["project"])
             proj_combo.setEnabled(True)
             self.table.setCellWidget(r, 0, proj_combo)
-            d = self.staffing_data.data["demand"][proj]
-            # Domain
+
             domain_combo = QComboBox()
             domain_combo.addItems(DOMAINS)
-            domain_combo.setCurrentText(d.get("domain", DOMAINS[0]))
+            domain_combo.setCurrentText(entry.get("domain", DOMAINS[0]))
+            domain_combo.setEnabled(True)
             self.table.setCellWidget(r, 1, domain_combo)
-            # Scaling
-            scaling = d.get("scaling_factor", 1.0)
-            scaling_item = QTableWidgetItem(str(scaling))
+
+            scaling_item = QTableWidgetItem(str(entry.get("scaling_factor", 1.0)))
             scaling_item.setFlags(scaling_item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(r, 2, scaling_item)
-            monthly = d.get("monthly_demand", {})
+
+            monthly = entry.get("monthly_demand", {})
             for c, m in enumerate(self.months):
                 mkey = json_month(m)
                 val = monthly.get(mkey, 0.0)
                 item = QTableWidgetItem(str(val))
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
+                if val == 0.0:
+                    item.setBackground(Qt.GlobalColor.lightGray)
+                    item.setForeground(Qt.GlobalColor.gray)
                 self.table.setItem(r, c + 3, item)
 
     def add_entry(self):
-        projects = list(self.staffing_data.data["demand"].keys())
         row = self.table.rowCount()
         self.table.insertRow(row)
         proj_combo = QComboBox()
+        projects = sorted({d["project"] for d in self.staffing_data.data["demand"]})
         proj_combo.addItems(projects)
         proj_combo.setEditable(True)
         self.table.setCellWidget(row, 0, proj_combo)
+
         domain_combo = QComboBox()
         domain_combo.addItems(DOMAINS)
         self.table.setCellWidget(row, 1, domain_combo)
+
         scaling_item = QTableWidgetItem("1.0")
         scaling_item.setFlags(scaling_item.flags() | Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(row, 2, scaling_item)
+
         for c in range(len(self.months)):
             item = QTableWidgetItem("0.0")
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, c + 3, item)
+
         self.table.selectRow(row)
 
     def edit_entry(self):
@@ -572,15 +581,10 @@ class DemandTab(QWidget):
         if row < 0:
             QMessageBox.warning(self, "Remove Demand", "Select a row to remove.")
             return
-        proj_combo = self.table.cellWidget(row, 0)
-        if proj_combo:
-            proj = proj_combo.currentText()
-            if proj in self.staffing_data.data["demand"]:
-                del self.staffing_data.data["demand"][proj]
         self.table.removeRow(row)
 
     def save(self):
-        new_demand = {}
+        new_demand = []
         for r in range(self.table.rowCount()):
             proj_combo = self.table.cellWidget(r, 0)
             domain_combo = self.table.cellWidget(r, 1)
@@ -599,11 +603,12 @@ class DemandTab(QWidget):
                 except Exception:
                     val = 0.0
                 monthly[json_month(m)] = val
-            new_demand[proj] = {
+            new_demand.append({
+                "project": proj,
                 "domain": domain,
                 "scaling_factor": scaling,
                 "monthly_demand": monthly
-            }
+            })
         self.staffing_data.data["demand"] = new_demand
         self.staffing_data.save()
         QMessageBox.information(self, "Save", "Demand data saved.")
@@ -616,7 +621,7 @@ class DemandTab(QWidget):
         self.load_data()
 
     def refresh_project_dropdowns(self):
-        projects = list(self.staffing_data.data["demand"].keys())
+        projects = sorted({d["project"] for d in self.staffing_data.data["demand"]})
         for r in range(self.table.rowCount()):
             proj_combo = self.table.cellWidget(r, 0)
             if proj_combo:
@@ -626,7 +631,6 @@ class DemandTab(QWidget):
                 if current in projects:
                     proj_combo.setCurrentText(current)
 
-# --- AllocationTab with Domain column and Filtering ---
 class AllocationTab(QWidget):
     def __init__(self, staffing_data, months, set_months_callback, parent=None):
         super().__init__(parent)
@@ -651,7 +655,7 @@ class AllocationTab(QWidget):
         filter_layout.addWidget(self.filter_domain)
         filter_layout.addStretch()
 
-        self.table = DragFillTableWidget(0, len(self.months) + 3)  # +3: Employee, Project, Domain
+        self.table = DragFillTableWidget(0, len(self.months) + 3)
         headers = ["Employee", "Project", "Domain"] + [format_month(m) for m in self.months]
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
@@ -688,63 +692,51 @@ class AllocationTab(QWidget):
 
     def update_filters(self):
         emps = self.staffing_data.data["employees"]
-        projects = list(self.staffing_data.data["demand"].keys())
-        domains = list(sorted(set(
-            d.get("domain", DOMAINS[0]) for d in self.staffing_data.data["demand"].values()
-        )))
-    
-        # Save current selections
+        projects = sorted({a["project"] for a in self.staffing_data.data["allocation"]} | {d["project"] for d in self.staffing_data.data["demand"]})
+        # Use all possible domains, not just those in the data
+        domains = DOMAINS[:]
         current_proj = self.filter_project.currentText() if self.filter_project.count() else "All"
         current_emp = self.filter_employee.currentText() if self.filter_employee.count() else "All"
         current_domain = self.filter_domain.currentText() if self.filter_domain.count() else "All"
-    
         self.filter_project.blockSignals(True)
         self.filter_employee.blockSignals(True)
         self.filter_domain.blockSignals(True)
-    
         self.filter_project.clear()
         self.filter_project.addItem("All")
         self.filter_project.addItems(projects)
-        # Restore previous selection if possible
         idx = self.filter_project.findText(current_proj)
         self.filter_project.setCurrentIndex(idx if idx != -1 else 0)
-    
         self.filter_employee.clear()
         self.filter_employee.addItem("All")
         self.filter_employee.addItems([e["name"] for e in emps])
         idx = self.filter_employee.findText(current_emp)
         self.filter_employee.setCurrentIndex(idx if idx != -1 else 0)
-    
         self.filter_domain.clear()
         self.filter_domain.addItem("All")
         self.filter_domain.addItems(domains)
         idx = self.filter_domain.findText(current_domain)
         self.filter_domain.setCurrentIndex(idx if idx != -1 else 0)
-    
         self.filter_project.blockSignals(False)
         self.filter_employee.blockSignals(False)
         self.filter_domain.blockSignals(False)
-    
 
     def load_data(self):
         self.update_filters()
         allocations = self.staffing_data.data["allocation"]
         emps = self.staffing_data.data["employees"]
         emp_names = {e["id"]: e["name"] for e in emps}
-        projects = list(self.staffing_data.data["demand"].keys())
-        project_domains = {proj: self.staffing_data.data["demand"][proj].get("domain", DOMAINS[0]) for proj in projects}
-    
-        # Get filter selections
-        proj_filter = self.filter_project.currentText() if self.filter_project.count() else "All"
-        emp_filter = self.filter_employee.currentText() if self.filter_employee.count() else "All"
-        domain_filter = self.filter_domain.currentText() if self.filter_domain.count() else "All"
-    
-        # Filter allocations
+        emp_ids = {e["name"]: e["id"] for e in emps}
+        projects = sorted({a["project"] for a in allocations} | {d["project"] for d in self.staffing_data.data["demand"]})
+
+        proj_filter = self.filter_project.currentText()
+        emp_filter = self.filter_employee.currentText()
+        domain_filter = self.filter_domain.currentText()
+
         filtered_allocs = []
         for alloc in allocations:
             emp_name = emp_names.get(alloc["employee_id"], "")
             proj = alloc["project"]
-            domain = project_domains.get(proj, DOMAINS[0])
+            domain = alloc.get("domain", DOMAINS[0])
             if (proj_filter == "All" or proj == proj_filter) and \
                (emp_filter == "All" or emp_name == emp_filter) and \
                (domain_filter == "All" or domain == domain_filter):
@@ -759,16 +751,18 @@ class AllocationTab(QWidget):
             if emp_name in [e["name"] for e in emps]:
                 emp_combo.setCurrentIndex([e["name"] for e in emps].index(emp_name))
             self.table.setCellWidget(r, 0, emp_combo)
+
             proj_combo = QComboBox()
             proj_combo.addItems(projects)
             if alloc["project"] in projects:
                 proj_combo.setCurrentIndex(projects.index(alloc["project"]))
             self.table.setCellWidget(r, 1, proj_combo)
-            # Domain column (read-only)
-            domain = project_domains.get(alloc["project"], DOMAINS[0])
-            domain_item = QTableWidgetItem(domain)
-            domain_item.setFlags(domain_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(r, 2, domain_item)
+
+            domain_combo = QComboBox()
+            domain_combo.addItems(DOMAINS)
+            domain_combo.setCurrentText(alloc.get("domain", DOMAINS[0]))
+            self.table.setCellWidget(r, 2, domain_combo)
+
             monthly = alloc.get("monthly_allocation", {})
             for c, m in enumerate(self.months):
                 mkey = json_month(m)
@@ -783,17 +777,14 @@ class AllocationTab(QWidget):
         emp_combo = QComboBox()
         emp_combo.addItems([e["name"] for e in emps])
         self.table.setCellWidget(self.table.rowCount() - 1, 0, emp_combo)
-        projects = list(self.staffing_data.data["demand"].keys())
+        projects = sorted({d["project"] for d in self.staffing_data.data["demand"]})
         proj_combo = QComboBox()
         proj_combo.addItems(projects)
         self.table.setCellWidget(self.table.rowCount() - 1, 1, proj_combo)
-        # Domain
-        domain = DOMAINS[0]
-        if projects:
-            domain = self.staffing_data.data["demand"][projects[0]].get("domain", DOMAINS[0])
-        domain_item = QTableWidgetItem(domain)
-        domain_item.setFlags(domain_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.table.setItem(self.table.rowCount() - 1, 2, domain_item)
+        domain_combo = QComboBox()
+        domain_combo.addItems(DOMAINS)
+        domain_combo.setCurrentText(DOMAINS[0])
+        self.table.setCellWidget(self.table.rowCount() - 1, 2, domain_combo)
         for c in range(3, self.table.columnCount()):
             item = QTableWidgetItem("0.0")
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
@@ -809,15 +800,16 @@ class AllocationTab(QWidget):
     def save(self):
         emps = self.staffing_data.data["employees"]
         emp_names = {e["name"]: e["id"] for e in emps}
-        projects = list(self.staffing_data.data["demand"].keys())
         allocations = []
         for r in range(self.table.rowCount()):
             emp_combo = self.table.cellWidget(r, 0)
             proj_combo = self.table.cellWidget(r, 1)
-            if not emp_combo or not proj_combo:
+            domain_combo = self.table.cellWidget(r, 2)
+            if not emp_combo or not proj_combo or not domain_combo:
                 continue
             emp_name = emp_combo.currentText()
             proj = proj_combo.currentText()
+            domain = domain_combo.currentText()
             emp_id = emp_names.get(emp_name)
             if not emp_id:
                 continue
@@ -832,6 +824,7 @@ class AllocationTab(QWidget):
             allocations.append({
                 "employee_id": emp_id,
                 "project": proj,
+                "domain": domain,
                 "monthly_allocation": monthly
             })
         self.staffing_data.data["allocation"] = allocations
@@ -846,7 +839,7 @@ class AllocationTab(QWidget):
         self.load_data()
 
     def refresh_project_dropdowns(self):
-        projects = list(self.staffing_data.data["demand"].keys())
+        projects = sorted({d["project"] for d in self.staffing_data.data["demand"]})
         for r in range(self.table.rowCount()):
             proj_combo = self.table.cellWidget(r, 1)
             if proj_combo:
@@ -856,23 +849,36 @@ class AllocationTab(QWidget):
                 if current in projects:
                     proj_combo.setCurrentText(current)
 
-# --- DemandAllocationOutputTab with Domain column ---
+
 class DemandAllocationOutputTab(QWidget):
     def __init__(self, staffing_data, months, set_months_callback, parent=None):
         super().__init__(parent)
         self.staffing_data = staffing_data
         self.months = months
         self.set_months_callback = set_months_callback
-        self.projects = list(self.staffing_data.data["demand"].keys())
-        self.table = QTableWidget(len(self.projects), len(self.months) + 2)  # +2: Domain, Scaling
-        headers = ["Domain", "Scaling"] + [format_month(m) for m in self.months]
+
+        # Filters
+        self.filter_project = QComboBox()
+        self.filter_domain = QComboBox()
+        self.filter_project.currentIndexChanged.connect(self.load_data)
+        self.filter_domain.currentIndexChanged.connect(self.load_data)
+
+        filter_layout = QHBoxLayout()
+        filter_layout.addWidget(QLabel("Project:"))
+        filter_layout.addWidget(self.filter_project)
+        filter_layout.addWidget(QLabel("Domain:"))
+        filter_layout.addWidget(self.filter_domain)
+        filter_layout.addStretch()
+
+        self.table = QTableWidget(0, len(self.months) + 3)  # Project, Domain, Scaling + months
+        headers = ["Project", "Domain", "Scaling"] + [format_month(m) for m in self.months]
         self.table.setHorizontalHeaderLabels(headers)
-        self.table.setVerticalHeaderLabels(self.projects)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        for i in range(2, len(headers)):
+        for i in range(3, len(headers)):
             self.table.setColumnWidth(i, 50)
-        self.load_data()
+
         layout = QVBoxLayout()
+        layout.addLayout(filter_layout)
         layout.addWidget(self.table)
         btns = QHBoxLayout()
         config_btn = QPushButton("Config")
@@ -890,38 +896,79 @@ class DemandAllocationOutputTab(QWidget):
         layout.addLayout(btns)
         self.setLayout(layout)
 
+        self.update_filters()
+        self.load_data()
+
+    def update_filters(self):
+        demand_list = self.staffing_data.data["demand"]
+        projects = sorted({d["project"] for d in demand_list})
+        domains = sorted({d["domain"] for d in demand_list})
+        current_proj = self.filter_project.currentText() if self.filter_project.count() else "All"
+        current_domain = self.filter_domain.currentText() if self.filter_domain.count() else "All"
+        self.filter_project.blockSignals(True)
+        self.filter_domain.blockSignals(True)
+        self.filter_project.clear()
+        self.filter_project.addItem("All")
+        self.filter_project.addItems(projects)
+        idx = self.filter_project.findText(current_proj)
+        self.filter_project.setCurrentIndex(idx if idx != -1 else 0)
+        self.filter_domain.clear()
+        self.filter_domain.addItem("All")
+        self.filter_domain.addItems(domains)
+        idx = self.filter_domain.findText(current_domain)
+        self.filter_domain.setCurrentIndex(idx if idx != -1 else 0)
+        self.filter_project.blockSignals(False)
+        self.filter_domain.blockSignals(False)
+
     def load_data(self):
-        self.projects = list(self.staffing_data.data["demand"].keys())
-        self.table.setRowCount(len(self.projects))
-        self.table.setVerticalHeaderLabels(self.projects)
-        allocations = self.staffing_data.data["allocation"]
+        self.update_filters()
+        demand_list = self.staffing_data.data["demand"]
+        allocation_list = self.staffing_data.data["allocation"]
         thresholds = self.staffing_data.data["thresholds"]
-        for r, proj in enumerate(self.projects):
-            d = self.staffing_data.data["demand"][proj]
-            domain = d.get("domain", DOMAINS[0])
-            scaling = d.get("scaling_factor", 1.0)
-            domain_item = QTableWidgetItem(domain)
-            domain_item.setFlags(domain_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(r, 0, domain_item)
-            scaling_item = QTableWidgetItem(str(scaling))
-            scaling_item.setFlags(scaling_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(r, 1, scaling_item)
-            monthly_demand = d.get("monthly_demand", {})
-            alloc_by_month = {json_month(m): 0.0 for m in self.months}
-            for alloc in allocations:
-                if alloc["project"] == proj:
-                    for m in self.months:
-                        mkey = json_month(m)
-                        alloc_by_month[mkey] += alloc.get("monthly_allocation", {}).get(mkey, 0.0)
+
+        projects = sorted({d["project"] for d in demand_list})
+        domains = sorted({d["domain"] for d in demand_list})
+        pairs = [(p, d) for p in projects for d in domains]
+
+        proj_filter = self.filter_project.currentText()
+        domain_filter = self.filter_domain.currentText()
+        filtered_pairs = [
+            (p, d) for (p, d) in pairs
+            if (proj_filter == "All" or p == proj_filter) and (domain_filter == "All" or d == domain_filter)
+        ]
+
+        self.table.setRowCount(len(filtered_pairs))
+        self.table.setVerticalHeaderLabels([f"{p} / {d}" for (p, d) in filtered_pairs])
+
+        for r, (proj, domain) in enumerate(filtered_pairs):
+            scaling = 1.0
+            for entry in demand_list:
+                if entry["project"] == proj and entry["domain"] == domain:
+                    scaling = entry.get("scaling_factor", 1.0)
+                    break
+            self.table.setItem(r, 0, QTableWidgetItem(proj))
+            self.table.setItem(r, 1, QTableWidgetItem(domain))
+            self.table.setItem(r, 2, QTableWidgetItem(str(scaling)))
+
             for c, m in enumerate(self.months):
                 mkey = json_month(m)
-                val = scaling * monthly_demand.get(mkey, 0.0) - alloc_by_month.get(mkey, 0.0)
+                total_demand = sum(
+                    entry.get("scaling_factor", 1.0) * entry.get("monthly_demand", {}).get(mkey, 0.0)
+                    for entry in demand_list
+                    if entry["project"] == proj and entry["domain"] == domain
+                )
+                total_alloc = sum(
+                    alloc.get("monthly_allocation", {}).get(mkey, 0.0)
+                    for alloc in allocation_list
+                    if alloc["project"] == proj and alloc["domain"] == domain
+                )
+                val = total_demand - total_alloc
                 item = QTableWidgetItem(f"{val:.2f}")
                 if val > thresholds["output1_red"]:
                     item.setBackground(Qt.GlobalColor.red)
                 elif val < thresholds["output1_blue"]:
                     item.setBackground(Qt.GlobalColor.blue)
-                self.table.setItem(r, c + 2, item)
+                self.table.setItem(r, c + 3, item)
 
     def config(self):
         dialog = ThresholdConfigDialog(self.staffing_data.data["thresholds"], self)
@@ -936,12 +983,10 @@ class DemandAllocationOutputTab(QWidget):
 
     def update_months(self, months):
         self.months = months
-        headers = ["Domain", "Scaling"] + [format_month(m) for m in self.months]
-        self.table.setColumnCount(len(months) + 2)
+        headers = ["Project", "Domain", "Scaling"] + [format_month(m) for m in months]
+        self.table.setColumnCount(len(months) + 3)
         self.table.setHorizontalHeaderLabels(headers)
         self.load_data()
-
-# --- AvailabilityAllocationOutputTab unchanged ---
 
 class AvailabilityAllocationOutputTab(QWidget):
     def __init__(self, staffing_data, months, set_months_callback, parent=None):
@@ -1018,8 +1063,6 @@ class AvailabilityAllocationOutputTab(QWidget):
         self.table.setHorizontalHeaderLabels([format_month(m) for m in months])
         self.load_data()
 
-# --- ProjectsTab and ProjectEditDialog unchanged ---
-
 class ProjectsTab(QWidget):
     def __init__(self, staffing_data, parent=None):
         super().__init__(parent)
@@ -1055,24 +1098,26 @@ class ProjectsTab(QWidget):
 
     def load_data(self):
         self.table.setRowCount(0)
-        for proj, data in self.staffing_data.data["demand"].items():
+        for entry in self.staffing_data.data["demand"]:
+            proj = entry["project"]
+            scaling = entry.get("scaling_factor", 1.0)
             row = self.table.rowCount()
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(proj))
-            self.table.setItem(row, 1, QTableWidgetItem(str(data.get("scaling_factor", 1.0))))
+            self.table.setItem(row, 1, QTableWidgetItem(str(scaling)))
 
     def add_project(self):
         dialog = ProjectEditDialog(None, self)
         if dialog.exec():
             proj, scaling = dialog.get_project()
-            if proj in self.staffing_data.data["demand"]:
-                QMessageBox.warning(self, "Add Project", "Project already exists.")
-                return
-            self.staffing_data.data["demand"][proj] = {
-                "domain": DOMAINS[0],
-                "scaling_factor": scaling,
-                "monthly_demand": {}
-            }
+            # Add a new entry for each domain
+            for domain in DOMAINS:
+                self.staffing_data.data["demand"].append({
+                    "project": proj,
+                    "domain": domain,
+                    "scaling_factor": scaling,
+                    "monthly_demand": {}
+                })
             self.load_data()
             if self.parent_main:
                 self.parent_main.demand_tab.refresh_project_dropdowns()
@@ -1085,19 +1130,15 @@ class ProjectsTab(QWidget):
             QMessageBox.warning(self, "Edit Project", "Select a project to edit.")
             return
         proj = self.table.item(row, 0).text()
-        data = self.staffing_data.data["demand"][proj]
-        dialog = ProjectEditDialog((proj, data.get("scaling_factor", 1.0)), self)
+        scaling = float(self.table.item(row, 1).text())
+        dialog = ProjectEditDialog((proj, scaling), self)
         if dialog.exec():
-            new_proj, scaling = dialog.get_project()
-            if new_proj != proj and new_proj in self.staffing_data.data["demand"]:
-                QMessageBox.warning(self, "Edit Project", "Project name already exists.")
-                return
-            if new_proj != proj:
-                self.staffing_data.data["demand"][new_proj] = self.staffing_data.data["demand"].pop(proj)
-                for alloc in self.staffing_data.data["allocation"]:
-                    if alloc["project"] == proj:
-                        alloc["project"] = new_proj
-            self.staffing_data.data["demand"][new_proj]["scaling_factor"] = scaling
+            new_proj, new_scaling = dialog.get_project()
+            # Update all entries with this project name
+            for entry in self.staffing_data.data["demand"]:
+                if entry["project"] == proj:
+                    entry["project"] = new_proj
+                    entry["scaling_factor"] = new_scaling
             self.load_data()
             if self.parent_main:
                 self.parent_main.demand_tab.refresh_project_dropdowns()
@@ -1110,9 +1151,9 @@ class ProjectsTab(QWidget):
             QMessageBox.warning(self, "Remove Project", "Select a project to remove.")
             return
         proj = self.table.item(row, 0).text()
-        reply = QMessageBox.question(self, "Remove Project", f"Remove project '{proj}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(self, "Remove Project", f"Remove all entries for project '{proj}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
-            del self.staffing_data.data["demand"][proj]
+            self.staffing_data.data["demand"] = [d for d in self.staffing_data.data["demand"] if d["project"] != proj]
             self.staffing_data.data["allocation"] = [a for a in self.staffing_data.data["allocation"] if a["project"] != proj]
             self.load_data()
             if self.parent_main:
@@ -1181,7 +1222,6 @@ class StaffingApp(QMainWindow):
         self.setCentralWidget(self.tabs)
         self.tabs.currentChanged.connect(self.on_tab_changed)
 
-        # Dynamic output update on cell edit
         self.availability_tab.table.cellChanged.connect(self.reload_outputs)
         self.demand_tab.table.cellChanged.connect(self.reload_outputs)
         self.allocation_tab.table.cellChanged.connect(self.reload_outputs)
@@ -1227,4 +1267,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
