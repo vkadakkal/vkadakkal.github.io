@@ -1,0 +1,81 @@
+I need help building a staffing demand vs availability tracker using python. the GUI should be easy to drag cells over. it shall have 6 tabs. use a dark pleasant and colorful dark theme. All the data shall be read and written back to a JSON file (staffing_data.json). I already have a staffing_data.json that you can use and it has the following format
+"employees": [
+    {
+      "id": "1",
+      "name": "Employee1",
+      "domain": "HW",
+      "manager": "Bob"
+    },
+    {
+      "id": "2",
+      "name": "Employee2",
+      "domain": "Analysis",
+      "manager": "Alice"
+    },
+
+ "demand": {
+    "Project 1": {
+      "scaling_factor": 1.27,
+      "monthly_demand": {
+        "2025-06": 0.29,
+        "2025-07": 0.57,
+        "2025-08": 1.76,
+        "2025-09": 0.36,
+        "2025-10": 2.16,
+        "2025-11": 0.44
+      }
+    },
+    "Project 2": {
+      "scaling_factor": 0.91,
+      "monthly_demand": {
+        "2025-06": 0.45,
+        "2025-07": 0.92,
+        "2025-08": 1.02,
+        "2025-09": 2.74,
+        "2025-10": 2.5,
+        "2025-11": 1.08
+      }
+
+  "allocation": [
+    {
+      "employee_id": "2",
+      "project": "Project 2",
+      "monthly_allocation": {
+        "2025-06": 2.0,
+        "2025-07": 2.0
+      }
+    },
+    {
+      "employee_id": "2",
+      "project": "Project A",
+      "monthly_allocation": {}
+    }
+  ],
+  "thresholds": {
+    "output1_red": 1.0,
+    "output1_blue": 0.0,
+    "output2_red": 1.2,
+    "output2_blue": 0.8
+  }
+
+Here are further details of what I want on each tab
+1. list of employee names, their domain (choose from Analysis, HW, MPG, Functional) and their manager. Have the ability to add/edit/remove employees
+2. An Availability list. This shall have 1 row for each employee, and each column represents their availability as a fraction of 1 FTE for each month. The sheet shall be editable and after edit, values saved into the JSON file.
+3. A demand sheet for each project where staff should go. each cell is in FTE. same columns (monthly). Also add a scaling factor for each row in the first column.
+4. An allocation tab for employees. first column is employee list. have the ability to choose employee in a dropdown. 2nd column is the project - pull from dropdown based on the list of projects in the demand sheet. an employee may work on multiple projects. the next 12 columns shall be the allocation for the 12 month period.
+5. An Output sheet called "Out: Demand-Allocation" showing scaling*demand-allocation for each project
+6. An Output sheet called "Out: Availability-Allocation" showing resource loading - employee availability - allocation
+
+For the last 2 output tabs add color coding for each cells based on the following conditions
+for "Out: Demand-Allocation", if >1 mark cell red, if <0, mark blue
+for "Out: Availability-Allocation" if >1.2 mark cell red, if <0.8, mark blue
+these thresholds and their colors shall be editable with a config button and the params saved to the JSON file.
+
+Add a SAVE button to save the data on all tabs to the JSON file.
+
+Important : It shall be possible to drag over the cell contents horizontally or vertically just like in excel by dragging the bottom right corner
+
+finally, add a << and >> button on each tab to change the 12 month period by 1 month increments. Data on all tabs shall re-sync from the JSON file when this is done. For all tabs, allow the JSON file to save data for any month, but only the rolling 12 month period based on the selected window need to be displayed. Sync the months on all tabs when the << or >> buttons are pressed.
+
+For all tabs, the column widths for the months column, only need to be 5 characters wide
+by default have the first column be the current month, and look ahead 12 months. display month in 01/25 format
