@@ -10,6 +10,7 @@ class MortgageCalculator {
         this.homePrice = document.getElementById('homePrice');
         this.downPayment = document.getElementById('downPayment');
         this.originalRate = document.getElementById('originalRate');
+        this.loanType = document.getElementById('loanType');
         this.closingCosts = document.getElementById('closingCosts');
         this.refinanceRate = document.getElementById('refinanceRate');
         this.refinanceMonth = document.getElementById('refinanceMonth');
@@ -20,11 +21,31 @@ class MortgageCalculator {
         this.paymentsChart = document.getElementById('paymentsChart');
         this.refinanceChart = document.getElementById('refinanceChart');
         this.savingsChart = document.getElementById('savingsChart');
+        // ARM fields
+        this.armFixedYears = document.getElementById('armFixedYears');
+        this.armAdjRate = document.getElementById('armAdjRate');
+        this.armAdjFreq = document.getElementById('armAdjFreq');
+        this.armAdjCap = document.getElementById('armAdjCap');
+        this.armLifeCap = document.getElementById('armLifeCap');
     }
 
     setupEventListeners() {
-        [this.homePrice, this.downPayment, this.originalRate, this.closingCosts]
-            .forEach(input => input.addEventListener('input', () => this.calculate()));
+        [
+            this.homePrice,
+            this.downPayment,
+            this.originalRate,
+            this.closingCosts,
+            this.loanType,
+            this.armFixedYears,
+            this.armAdjRate,
+            this.armAdjFreq,
+            this.armAdjCap,
+            this.armLifeCap
+        ].forEach(input => {
+            if (input) {
+                input.addEventListener('input', () => this.calculate());
+            }
+        });
 
         this.refinanceRate.addEventListener('input', e => {
             this.refinanceRateValue.textContent = `${e.target.value}%`;
@@ -57,28 +78,47 @@ class MortgageCalculator {
             const interest = bal * (rate / 100 / 12);
             const pmt = mp - interest;
             bal = Math.max(0, bal - pmt);
-            sched.push({ month: m, principalPayment: pmt, interest, balance: bal, totalPayment: pmt + interest });
+            sched.push({ month: m, principalPayment: pmt, interest, balance: bal, totalPayment: mp });
             if (bal <= 0.01) break;
         }
         return sched;
     }
 
-    calculateRefinanceAnalysis(principal, oRate, rRate, years, rMonth, ccPct, initialClosingCosts) {
-        const origSched = this.generateAmortizationSchedule(principal, oRate, years);
-        if (rMonth > origSched.length) return Infinity;
+    // ARM: Simple two-stage (fixed, then adjustment kicks in)
+    generateAmortizationScheduleARM(principal, options, years) {
+        const n = years * 12;
+        let schedule = [];
+        let balance = principal;
+        let fixedMonths = options.fixedYears * 12;
+        let currentRate = options.initRate;
+        let rateChanged = false;
+        for (let month = 1; month <= n; month++) {
+            if (options.fixedYears && !rateChanged && month === fixedMonths + 1) {
+                currentRate = Math.min(options.initRate + options.lifeCap, options.adjRate);
+                rateChanged = true;
+            }
+            let remainMonths = n - month + 1;
+            const yearsLeft = remainMonths / 12;
+            const payment = this.monthlyPayment(balance, currentRate, yearsLeft);
+            const interest = balance * (currentRate / 100 / 12);
+            const principalPayment = payment - interest;
+            balance = Math.max(0, balance - principalPayment);
+            schedule.push({ month, principalPayment, interest, balance, totalPayment: payment });
+            if (balance <= 0.01) break;
+        }
+        return schedule;
+    }
 
+    calculateRefinanceAnalysis(principal, oRate, rRate, years, rMonth, ccPct, initialClosingCosts, origSched) {
+        if (rMonth > origSched.length) return Infinity;
         const beforeCost = origSched.slice(0, rMonth - 1)
             .reduce((sum, x) => sum + x.totalPayment, 0);
         const remBal = origSched[rMonth - 1].balance;
         const refiClosingCosts = remBal * (ccPct / 100);
-        
         const remainingMonths = origSched.length - (rMonth - 1);
         const remainingYears = remainingMonths / 12;
-        
         const refiSched = this.generateAmortizationSchedule(remBal, rRate, remainingYears);
         const afterCost = refiSched.reduce((sum, x) => sum + x.totalPayment, 0);
-
-        // FIXED: Include ALL costs for fair comparison
         return beforeCost + afterCost + refiClosingCosts + initialClosingCosts;
     }
 
@@ -86,30 +126,41 @@ class MortgageCalculator {
         try {
             const hp = parseFloat(this.homePrice.value);
             const dp = parseFloat(this.downPayment.value);
-            const oR = parseFloat(this.originalRate.value);
+            const loanType = this.loanType.value;
             const ccPct = parseFloat(this.closingCosts.value);
             const rR = parseFloat(this.refinanceRate.value);
             const rM = parseInt(this.refinanceMonth.value);
-
-            const principal = hp - dp, years = 30;
-            const origSched = this.generateAmortizationSchedule(principal, oR, years);
-            const mp = this.monthlyPayment(principal, oR, years);
+            const years = 30;
+            const principal = hp - dp;
+            let origSched;
+            let initRate = parseFloat(this.originalRate.value);
+            // ARM parameters
+            if (loanType === "arm") {
+                const options = {
+                    initRate: initRate,
+                    fixedYears: parseInt(this.armFixedYears.value),
+                    adjRate: parseFloat(this.armAdjRate.value),
+                    adjFreq: parseInt(this.armAdjFreq.value),
+                    adjCap: parseFloat(this.armAdjCap.value),
+                    lifeCap: parseFloat(this.armLifeCap.value),
+                }
+                origSched = this.generateAmortizationScheduleARM(principal, options, years);
+            } else {
+                origSched = this.generateAmortizationSchedule(principal, initRate, years);
+            }
+            // Same results logic as before
+            const mp = origSched[0]?.totalPayment || 0;
             const origLoanTotal = origSched.reduce((s, x) => s + x.totalPayment, 0);
             const initCC = hp * (ccPct / 100);
-            
             const origTotalWithClosing = origLoanTotal + initCC;
-            
-            // FIXED: Pass initial closing costs to refinance calculation
-            const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct, initCC);
+            const rTotal = this.calculateRefinanceAnalysis(principal, initRate, rR, years, rM, ccPct, initCC, origSched);
             const savings = origTotalWithClosing - rTotal;
-
             this.updateResults({
                 principal, mp, initCC,
-                origLoanTotal: origLoanTotal,
-                origTotalWithClosing: origTotalWithClosing,
+                origLoanTotal, origTotalWithClosing,
                 rRate: rR, rMonth: rM, rTotal, savings, dp
             });
-            this.updateCharts(origSched, principal, oR, rR, years, rM, ccPct, initCC);
+            this.updateCharts(origSched, principal, initRate, rR, years, rM, ccPct, initCC, loanType);
         } catch (err) {
             this.results.innerHTML = `<div style="color:#ff6b6b;"><strong>Error:</strong> ${err.message}</div>`;
         }
@@ -133,7 +184,7 @@ class MortgageCalculator {
                 <div style="border-top:1px solid #555;padding-top:8px;margin-top:8px;">
                     <strong>Total Cost: $${data.origTotalWithClosing.toLocaleString()}</strong>
                 </div>
-                <div>Cash at Closing: <strong>$${(data.dp+data.initCC).toLocaleString()}</strong></div>
+                <div>Cash at Closing: <strong>$${(data.dp + data.initCC).toLocaleString()}</strong></div>
             </div>
             <div>
                 <h3 style="color:#2196F3;margin-bottom:10px;">🔄 Refinance Scenario</h3>
@@ -143,18 +194,11 @@ class MortgageCalculator {
                 <div style="color:${clr};background:${bgClr};padding:10px;border-radius:8px;margin-top:10px;border-left:4px solid ${clr};">
                     <strong style="font-size:1.1em;">${icon} ${txt}: $${Math.abs(data.savings).toLocaleString()}</strong>
                     ${data.savings < 0 ? '<div style="font-size:0.9em;margin-top:5px;">⚠️ Refinancing would cost more</div>' : ''}
-                    ${Math.abs(data.savings) < 1000 ? '<div style="font-size:0.9em;margin-top:5px;">💡 Minimal difference - consider other factors</div>' : ''}
                 </div>
             </div>`;
     }
 
-    updateCharts(origSched, principal, oR, rR, years, rM, ccPct, initCC) {
-        this.updateBalanceChart(origSched);
-        this.updatePaymentsChart(origSched);
-        this.updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched, initCC);
-        this.updateSavingsChart(principal, oR, rR, years, ccPct, origSched, initCC);
-    }
-
+    // All chart updates now specify font size & label steps
     updateBalanceChart(sched) {
         const ctx = this.balanceChart.getContext('2d');
         if (this.charts.balance) this.charts.balance.destroy();
@@ -164,10 +208,29 @@ class MortgageCalculator {
                 label:'Loan Balance', data:sched.map(x=>x.balance),
                 borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.1)', fill:true, tension:0.1
             }]},
-            options:{ responsive:true, maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff' }}},
-                scales:{ x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
-                         y:{ ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` }, grid:{ color:'rgba(255,255,255,0.1)'}}}
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                plugins:{
+                    legend:{ labels:{ color:'#fff', font: {size:18} }},
+                    title: {display: false}
+                },
+                scales:{
+                    x:{ 
+                        title:{ display:true, text:'Month', color:'#fff', font: {size:20}},
+                        ticks:{
+                            color:'#fff',
+                            font: {size:18},
+                            stepSize:12,
+                            callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
+                        },
+                        grid:{ color:'rgba(255,255,255,0.1)'}
+                    },
+                    y:{
+                        title:{ display:true, text:'Balance ($)', color:'#fff', font:{size:20}},
+                        ticks:{ color:'#fff', font:{size:18}, callback:v=>`$${(v/1000).toFixed(0)}K` },
+                        grid:{ color:'rgba(255,255,255,0.1)'}
+                    }
+                }
             }
         });
     }
@@ -183,10 +246,27 @@ class MortgageCalculator {
                 { label:'Interest', data:sched.map(x=>x.interest),
                   borderColor:'#FF5722', backgroundColor:'rgba(255,87,34,0.1)', fill:true, tension:0.1 }
             ]},
-            options:{ responsive:true, maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff' }}},
-                scales:{ x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
-                         y:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}}}
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                plugins:{
+                    legend:{ labels:{ color:'#fff', font:{size:18} }},
+                    title: {display: false}
+                },
+                scales:{
+                    x:{ 
+                        title:{ display:true, text:'Month', color:'#fff', font:{size:20} },
+                        ticks:{
+                            color:'#fff', font:{size:18}, stepSize: 12,
+                            callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
+                        },
+                        grid:{ color:'rgba(255,255,255,0.1)' }
+                    },
+                    y:{ 
+                        title:{ display:true, text:'Payment ($)', color:'#fff', font:{size:20} },
+                        ticks:{ color:'#fff', font:{size:18} },
+                        grid:{ color:'rgba(255,255,255,0.1)'}
+                    }
+                }
             }
         });
     }
@@ -195,15 +275,12 @@ class MortgageCalculator {
         const ctx = this.refinanceChart.getContext('2d');
         if (this.charts.refinance) this.charts.refinance.destroy();
         const monthsArr=[], costsArr=[];
-        
         const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
-        
-        for(let m=1; m<=Math.min(origSched.length,240); m+=3){
+        for(let m=1; m<=Math.min(origSched.length,360); m+=3){
             monthsArr.push(m);
-            costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC));
+            costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC, origSched));
         }
-        const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct, initCC);
-        
+        const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct, initCC, origSched);
         this.charts.refinance = new Chart(ctx,{
             type:'line',
             data:{
@@ -222,12 +299,17 @@ class MortgageCalculator {
             },
             options:{
                 responsive:true, maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff' }}},
+                plugins:{ legend:{ labels:{ color:'#fff', font:{size:18} }},
+                          title:{display:false} },
                 scales:{
-                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff'},
-                        ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
-                    y:{ title:{ display:true, text:'Total Cost ($)', color:'#fff'},
-                        ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
+                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff', font:{size:20} },
+                        ticks:{ color:'#fff', font:{size:18}, stepSize:12,
+                            callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
+                        },
+                        grid:{ color:'rgba(255,255,255,0.1)' }
+                    },
+                    y:{ title:{ display:true, text:'Total Cost ($)', color:'#fff', font:{size:20} },
+                        ticks:{ color:'#fff', font:{size:18}, callback:v=>`$${(v/1000).toFixed(0)}K` },
                         grid:{ color:'rgba(255,255,255,0.1)'} }
                 }
             }
@@ -238,17 +320,14 @@ class MortgageCalculator {
         const ctx = this.savingsChart.getContext('2d');
         if (this.charts.savings) this.charts.savings.destroy();
         const monthsArr=[], posArr=[], negArr=[];
-        
         const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
-        
-        for(let m=1; m<=Math.min(origSched.length,240); m+=3){
-            const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC);
+        for(let m=1; m<=Math.min(origSched.length,360); m+=3){
+            const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC, origSched);
             const diff = origTotalWithClosing - cost;
             monthsArr.push(m);
             posArr.push(diff>=0?diff:null);
             negArr.push(diff<0?Math.abs(diff):null);
         }
-        
         this.charts.savings = new Chart(ctx,{
             type:'line',
             data:{
@@ -265,7 +344,7 @@ class MortgageCalculator {
             options:{
                 responsive:true, maintainAspectRatio:false,
                 plugins:{ 
-                    legend:{ labels:{ color:'#fff' }},
+                    legend:{ labels:{ color:'#fff', font:{size:18} }},
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -278,15 +357,20 @@ class MortgageCalculator {
                     }
                 },
                 scales:{
-                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff'},
-                        ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
-                    y:{ title:{ display:true, text:'Amount ($)', color:'#fff'},
-                        ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
-                        grid:{ color:'rgba(255,255,255,0.1)'} }
+                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff', font:{size:20}},
+                        ticks:{
+                            color:'#fff', font:{size:18}, stepSize:12,
+                            callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
+                        },
+                        grid:{ color:'rgba(255,255,255,0.1)'}
+                    },
+                    y:{ title:{ display:true, text:'Amount ($)', color:'#fff', font:{size:20} },
+                        ticks:{ color:'#fff', font:{size:18}, callback:v=>`$${(v/1000).toFixed(0)}K` },
+                        grid:{ color:'rgba(255,255,255,0.1)' }
+                    }
                 }
             }
         });
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => new MortgageCalculator());
