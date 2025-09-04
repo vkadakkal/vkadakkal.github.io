@@ -11,11 +11,9 @@
     <div class="container">
         <header>
             <h1>🏠 Interactive Mortgage & Refinance Calculator</h1>
-            <p>Calculate payments, analyze refinancing options, and visualize amortization schedules</p>
+            <p>Works for fixed-rate or adjustable (ARM) initial loans, shows all costs & charts</p>
         </header>
-
         <div class="app-layout">
-            <!-- Left Panel: Controls -->
             <div class="controls-panel">
                 <div class="input-section">
                     <h2>💰 Loan Details</h2>
@@ -28,15 +26,43 @@
                         <input type="number" id="downPayment" value="100000" min="0">
                     </div>
                     <div class="input-group">
-                        <label for="originalRate">Original Interest Rate (%)</label>
+                        <label for="loanType">Loan Type</label>
+                        <select id="loanType">
+                            <option value="fixed">Fixed-Rate</option>
+                            <option value="arm">Adjustable-Rate (ARM)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="originalRate">Initial Rate (%)</label>
                         <input type="number" id="originalRate" value="7.0" min="0" max="20" step="0.1">
+                    </div>
+                    <div class="arm-fields" style="display:none;">
+                        <div class="input-group">
+                            <label for="armFixedYears">ARM Initial Fixed Period (years)</label>
+                            <input type="number" id="armFixedYears" value="5" min="1" max="30">
+                        </div>
+                        <div class="input-group">
+                            <label for="armAdjRate">ARM Adjusted Rate (%)</label>
+                            <input type="number" id="armAdjRate" value="9.0" min="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="armAdjFreq">Adjustment Frequency (years)</label>
+                            <input type="number" id="armAdjFreq" value="1" min="1" max="30">
+                        </div>
+                        <div class="input-group">
+                            <label for="armAdjCap">Per Adjustment Cap (%)</label>
+                            <input type="number" id="armAdjCap" value="2.0" min="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label for="armLifeCap">Lifetime Cap (%)</label>
+                            <input type="number" id="armLifeCap" value="5.0" min="0" step="0.1">
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="closingCosts">Closing Costs (%)</label>
                         <input type="number" id="closingCosts" value="3.0" min="0" max="10" step="0.1">
                     </div>
                 </div>
-
                 <div class="slider-section">
                     <h2>🎛️ Interactive Controls</h2>
                     <div class="slider-group">
@@ -48,16 +74,12 @@
                         <input type="range" id="refinanceMonth" min="1" max="360" value="60">
                     </div>
                 </div>
-
                 <button id="calculateBtn" class="calculate-btn">📊 Calculate & Update Charts</button>
-
                 <div class="results-section">
                     <h2>📈 Results</h2>
                     <div id="results" class="results-content">Results will appear here...</div>
                 </div>
             </div>
-
-            <!-- Right Panel: Charts -->
             <div class="charts-panel">
                 <div class="charts-grid">
                     <div class="chart-item">
@@ -80,7 +102,12 @@
             </div>
         </div>
     </div>
-
+    <script>
+    document.getElementById('loanType').addEventListener('change', function() {
+        document.querySelector('.arm-fields').style.display =
+          this.value === 'arm' ? 'block' : 'none';
+    });
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
