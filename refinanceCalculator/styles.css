@@ -147,7 +147,7 @@ header p {
     line-height: 1.6;
 }
 
-/* Right Panel Styles */
+/* Right Panel Styles - FIXED VERSION */
 .charts-panel {
     background: rgba(0, 0, 0, 0.4);
     padding: 25px;
@@ -190,16 +190,20 @@ header p {
 .chart-container {
     position: relative;
     height: 500px;
+    width: 100%;
 }
 
 .chart-canvas {
-    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
+    display: none; /* Hide all charts by default */
 }
 
 .chart-canvas.active {
-    display: block;
+    display: block !important; /* Show only active chart */
 }
 
 /* Responsive Design */
