@@ -52,12 +52,13 @@ class MortgageCalculator {
     generateAmortizationSchedule(principal, rate, years) {
         const mp = this.monthlyPayment(principal, rate, years);
         let bal = principal, sched = [];
-        for (let m = 1; m <= years * 12; m++) {
+        const totalMonths = Math.round(years * 12); // Ensure integer
+        for (let m = 1; m <= totalMonths; m++) {
             const interest = bal * (rate / 100 / 12);
             const pmt = mp - interest;
             bal = Math.max(0, bal - pmt);
             sched.push({ month: m, principalPayment: pmt, interest, balance: bal, totalPayment: pmt + interest });
-            if (bal <= 0) break;
+            if (bal <= 0.01) break; // Use small threshold instead of exact 0
         }
         return sched;
     }
@@ -70,9 +71,12 @@ class MortgageCalculator {
             .reduce((sum, x) => sum + x.totalPayment, 0);
         const remBal = origSched[rMonth - 1].balance;
         const refiClosingCosts = remBal * (ccPct / 100);
-        const remMonths = years * 12 - (rMonth - 1);
-        const remYears = Math.max(1, remMonths / 12);
-        const refiSched = this.generateAmortizationSchedule(remBal, rRate, remYears);
+        
+        // FIXED: Use exact remaining months from original schedule
+        const remainingMonths = origSched.length - (rMonth - 1);
+        const remainingYears = remainingMonths / 12;
+        
+        const refiSched = this.generateAmortizationSchedule(remBal, rRate, remainingYears);
         const afterCost = refiSched.reduce((sum, x) => sum + x.totalPayment, 0);
 
         return beforeCost + afterCost + refiClosingCosts;
@@ -93,12 +97,8 @@ class MortgageCalculator {
             const origLoanTotal = origSched.reduce((s, x) => s + x.totalPayment, 0);
             const initCC = hp * (ccPct / 100);
             
-            // UPDATED: Include initial closing costs in original total
             const origTotalWithClosing = origLoanTotal + initCC;
-            
             const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
-            
-            // UPDATED: Compare totals including closing costs
             const savings = origTotalWithClosing - rTotal;
 
             this.updateResults({
@@ -193,7 +193,6 @@ class MortgageCalculator {
         if (this.charts.refinance) this.charts.refinance.destroy();
         const monthsArr=[], costsArr=[];
         
-        // UPDATED: Include initial closing costs in original total
         const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
         
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
@@ -237,7 +236,6 @@ class MortgageCalculator {
         if (this.charts.savings) this.charts.savings.destroy();
         const monthsArr=[], posArr=[], negArr=[];
         
-        // UPDATED: Include initial closing costs in original total
         const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
         
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
@@ -245,7 +243,7 @@ class MortgageCalculator {
             const diff = origTotalWithClosing - cost;
             monthsArr.push(m);
             posArr.push(diff>=0?diff:null);
-            negArr.push(diff<0?Math.abs(diff):null); // Show absolute value for losses
+            negArr.push(diff<0?Math.abs(diff):null);
         }
         
         this.charts.savings = new Chart(ctx,{
