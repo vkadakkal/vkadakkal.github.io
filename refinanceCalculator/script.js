@@ -69,13 +69,13 @@ class MortgageCalculator {
         const beforeCost = origSched.slice(0, rMonth - 1)
             .reduce((sum, x) => sum + x.totalPayment, 0);
         const remBal = origSched[rMonth - 1].balance;
-        const closing = remBal * (ccPct / 100);
+        const refiClosingCosts = remBal * (ccPct / 100);
         const remMonths = years * 12 - (rMonth - 1);
         const remYears = Math.max(1, remMonths / 12);
         const refiSched = this.generateAmortizationSchedule(remBal, rRate, remYears);
         const afterCost = refiSched.reduce((sum, x) => sum + x.totalPayment, 0);
 
-        return beforeCost + afterCost + closing;
+        return beforeCost + afterCost + refiClosingCosts;
     }
 
     calculate() {
@@ -90,19 +90,24 @@ class MortgageCalculator {
             const principal = hp - dp, years = 30;
             const origSched = this.generateAmortizationSchedule(principal, oR, years);
             const mp = this.monthlyPayment(principal, oR, years);
-            const origTotal = origSched.reduce((s, x) => s + x.totalPayment, 0);
+            const origLoanTotal = origSched.reduce((s, x) => s + x.totalPayment, 0);
             const initCC = hp * (ccPct / 100);
+            
+            // UPDATED: Include initial closing costs in original total
+            const origTotalWithClosing = origLoanTotal + initCC;
+            
             const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
             
-            // FIXED: Compare loan costs only, not including initial closing costs
-            const savings = origTotal - rTotal;
+            // UPDATED: Compare totals including closing costs
+            const savings = origTotalWithClosing - rTotal;
 
             this.updateResults({
                 principal, mp, initCC,
-                origTotal: origTotal,  // FIXED: Show loan payments only
+                origLoanTotal: origLoanTotal,
+                origTotalWithClosing: origTotalWithClosing,
                 rRate: rR, rMonth: rM, rTotal, savings, dp
             });
-            this.updateCharts(origSched, principal, oR, rR, years, rM, ccPct);
+            this.updateCharts(origSched, principal, oR, rR, years, rM, ccPct, initCC);
         } catch (err) {
             this.results.innerHTML = `<div style="color:#ff6b6b;"><strong>Error:</strong> ${err.message}</div>`;
         }
@@ -111,36 +116,40 @@ class MortgageCalculator {
     updateResults(data) {
         const yrs = Math.floor(data.rMonth / 12),
               mos = data.rMonth % 12,
-              clr = data.savings > 0 ? '#4CAF50' : '#ff6b6b',
-              icon = data.savings > 0 ? '💰' : '💸',
-              txt = data.savings > 0 ? 'Savings' : 'Additional Cost';
+              clr = data.savings > 0 ? '#4CAF50' : '#F44336',
+              bgClr = data.savings > 0 ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)',
+              icon = data.savings > 0 ? '💰' : '❌',
+              txt = data.savings > 0 ? 'Total Savings' : 'Total Loss';
 
         this.results.innerHTML = `
             <div style="margin-bottom:20px;">
-                <h3 style="color:#4CAF50;margin-bottom:10px;">🏠 Loan Details</h3>
+                <h3 style="color:#4CAF50;margin-bottom:10px;">🏠 Original Loan</h3>
                 <div>Principal: <strong>$${data.principal.toLocaleString()}</strong></div>
                 <div>Monthly Payment: <strong>$${data.mp.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+                <div>Loan Payments (30yr): <strong>$${data.origLoanTotal.toLocaleString()}</strong></div>
                 <div>Initial Closing Costs: <strong>$${data.initCC.toLocaleString()}</strong></div>
+                <div style="border-top:1px solid #555;padding-top:8px;margin-top:8px;">
+                    <strong>Total Cost: $${data.origTotalWithClosing.toLocaleString()}</strong>
+                </div>
                 <div>Cash at Closing: <strong>$${(data.dp+data.initCC).toLocaleString()}</strong></div>
-                <div>Total Loan Cost (30yr): <strong>$${data.origTotal.toLocaleString()}</strong></div>
-                <div style="color:#888;font-size:0.9em;">Grand Total with Closing: $${(data.origTotal+data.initCC).toLocaleString()}</div>
             </div>
             <div>
-                <h3 style="color:#2196F3;margin-bottom:10px;">🔄 Refinance Analysis</h3>
+                <h3 style="color:#2196F3;margin-bottom:10px;">🔄 Refinance Scenario</h3>
                 <div>New Rate: <strong>${data.rRate}%</strong></div>
                 <div>Refinance at: <strong>Month ${data.rMonth}</strong> (${yrs}y ${mos}m)</div>
                 <div>Total Cost with Refi: <strong>$${data.rTotal.toLocaleString()}</strong></div>
-                <div style="color:${clr};font-size:1.1em;margin-top:10px;">
-                    <strong>${icon} ${txt}: $${Math.abs(data.savings).toLocaleString()}</strong>
+                <div style="color:${clr};background:${bgClr};padding:10px;border-radius:8px;margin-top:10px;border-left:4px solid ${clr};">
+                    <strong style="font-size:1.1em;">${icon} ${txt}: $${Math.abs(data.savings).toLocaleString()}</strong>
+                    ${data.savings < 0 ? '<div style="font-size:0.9em;margin-top:5px;">⚠️ Refinancing would cost more</div>' : ''}
                 </div>
             </div>`;
     }
 
-    updateCharts(origSched, principal, oR, rR, years, rM, ccPct) {
+    updateCharts(origSched, principal, oR, rR, years, rM, ccPct, initCC) {
         this.updateBalanceChart(origSched);
         this.updatePaymentsChart(origSched);
-        this.updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched);
-        this.updateSavingsChart(principal, oR, rR, years, ccPct, origSched);
+        this.updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched, initCC);
+        this.updateSavingsChart(principal, oR, rR, years, ccPct, origSched, initCC);
     }
 
     updateBalanceChart(sched) {
@@ -179,28 +188,33 @@ class MortgageCalculator {
         });
     }
 
-    updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched) {
+    updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched, initCC) {
         const ctx = this.refinanceChart.getContext('2d');
         if (this.charts.refinance) this.charts.refinance.destroy();
         const monthsArr=[], costsArr=[];
-        const origTotal = origSched.reduce((s,x)=>s+x.totalPayment,0);
+        
+        // UPDATED: Include initial closing costs in original total
+        const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
+        
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
             monthsArr.push(m);
             costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct));
         }
         const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
+        
         this.charts.refinance = new Chart(ctx,{
             type:'line',
             data:{
                 labels:monthsArr,
                 datasets:[
-                    { label:'Cost w/ Refi', data:costsArr,
+                    { label:'Total Cost w/ Refi', data:costsArr,
                       borderColor:'#9C27B0', backgroundColor:'rgba(156,39,176,0.1)',
                       fill:false, tension:0.4, pointRadius:1, pointHoverRadius:4 },
-                    { label:'Original Cost', data:monthsArr.map(()=>origTotal),
+                    { label:'Original Total Cost', data:monthsArr.map(()=>origTotalWithClosing),
                       borderColor:'#FF9800', borderDash:[5,5], fill:false, pointRadius:0 },
                     { label:'Current Selection', data:monthsArr.map(m=>m===rM?currentCost:null),
-                      borderColor:'#4CAF50', backgroundColor:'#4CAF50',
+                      borderColor: currentCost < origTotalWithClosing ? '#4CAF50' : '#F44336',
+                      backgroundColor: currentCost < origTotalWithClosing ? '#4CAF50' : '#F44336',
                       showLine:false, fill:false, pointRadius:6, pointHoverRadius:8 }
                 ]
             },
@@ -218,37 +232,55 @@ class MortgageCalculator {
         });
     }
 
-    updateSavingsChart(principal, oR, rR, years, ccPct, origSched) {
+    updateSavingsChart(principal, oR, rR, years, ccPct, origSched, initCC) {
         const ctx = this.savingsChart.getContext('2d');
         if (this.charts.savings) this.charts.savings.destroy();
         const monthsArr=[], posArr=[], negArr=[];
-        const origTotal = origSched.reduce((s,x)=>s+x.totalPayment,0);
+        
+        // UPDATED: Include initial closing costs in original total
+        const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
+        
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
             const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct);
-            const diff = origTotal - cost;
+            const diff = origTotalWithClosing - cost;
             monthsArr.push(m);
             posArr.push(diff>=0?diff:null);
-            negArr.push(diff<0?diff:null);
+            negArr.push(diff<0?Math.abs(diff):null); // Show absolute value for losses
         }
+        
         this.charts.savings = new Chart(ctx,{
             type:'line',
             data:{
                 labels:monthsArr,
                 datasets:[
-                    { label:'Savings', data:posArr,
-                      borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.2)',
+                    { label:'💰 Savings', data:posArr,
+                      borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.3)',
                       fill:true, spanGaps:true, tension:0.1 },
-                    { label:'Additional Cost', data:negArr,
-                      borderColor:'#F44336', backgroundColor:'rgba(244,67,54,0.2)',
+                    { label:'❌ Additional Cost', data:negArr,
+                      borderColor:'#F44336', backgroundColor:'rgba(244,67,54,0.3)',
                       fill:true, spanGaps:true, tension:0.1 }
                 ]
             },
             options:{
                 responsive:true, maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff' }}},
+                plugins:{ 
+                    legend:{ labels:{ color:'#fff' }},
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                if (value === null) return '';
+                                const isLoss = context.dataset.label.includes('❌');
+                                return `${context.dataset.label}: $${value.toLocaleString()}${isLoss ? ' loss' : ' savings'}`;
+                            }
+                        }
+                    }
+                },
                 scales:{
-                    x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
-                    y:{ ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
+                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff'},
+                        ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
+                    y:{ title:{ display:true, text:'Amount ($)', color:'#fff'},
+                        ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
                         grid:{ color:'rgba(255,255,255,0.1)'} }
                 }
             }
