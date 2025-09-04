@@ -93,11 +93,13 @@ class MortgageCalculator {
             const origTotal = origSched.reduce((s, x) => s + x.totalPayment, 0);
             const initCC = hp * (ccPct / 100);
             const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
-            const savings = (origTotal + initCC) - rTotal;
+            
+            // FIXED: Compare loan costs only, not including initial closing costs
+            const savings = origTotal - rTotal;
 
             this.updateResults({
                 principal, mp, initCC,
-                origTotal: origTotal + initCC,
+                origTotal: origTotal,  // FIXED: Show loan payments only
                 rRate: rR, rMonth: rM, rTotal, savings, dp
             });
             this.updateCharts(origSched, principal, oR, rR, years, rM, ccPct);
@@ -120,7 +122,8 @@ class MortgageCalculator {
                 <div>Monthly Payment: <strong>$${data.mp.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
                 <div>Initial Closing Costs: <strong>$${data.initCC.toLocaleString()}</strong></div>
                 <div>Cash at Closing: <strong>$${(data.dp+data.initCC).toLocaleString()}</strong></div>
-                <div>Total Cost (30yr): <strong>$${data.origTotal.toLocaleString()}</strong></div>
+                <div>Total Loan Cost (30yr): <strong>$${data.origTotal.toLocaleString()}</strong></div>
+                <div style="color:#888;font-size:0.9em;">Grand Total with Closing: $${(data.origTotal+data.initCC).toLocaleString()}</div>
             </div>
             <div>
                 <h3 style="color:#2196F3;margin-bottom:10px;">🔄 Refinance Analysis</h3>
