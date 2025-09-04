@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Mortgage Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Interactive Mortgage & Refinance Calculator</h1>
+            <p>Calculate payments, analyze refinancing options, and visualize amortization schedules</p>
+        </header>
+
+        <div class="app-layout">
+            <!-- Left Panel: Controls -->
+            <div class="controls-panel">
+                <div class="input-section">
+                    <h2>💰 Loan Details</h2>
+                    <div class="input-group">
+                        <label for="homePrice">Home Price ($)</label>
+                        <input type="number" id="homePrice" value="500000" min="50000">
+                    </div>
+                    <div class="input-group">
+                        <label for="downPayment">Down Payment ($)</label>
+                        <input type="number" id="downPayment" value="100000" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="originalRate">Original Interest Rate (%)</label>
+                        <input type="number" id="originalRate" value="7.0" min="0" max="20" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="closingCosts">Closing Costs (%)</label>
+                        <input type="number" id="closingCosts" value="3.0" min="0" max="10" step="0.1">
+                    </div>
+                </div>
+
+                <div class="slider-section">
+                    <h2>🎛️ Interactive Controls</h2>
+                    <div class="slider-group">
+                        <label for="refinanceRate">Refinance Rate: <span id="refinanceRateValue">5.8%</span></label>
+                        <input type="range" id="refinanceRate" min="1.0" max="10.0" step="0.1" value="5.8">
+                    </div>
+                    <div class="slider-group">
+                        <label for="refinanceMonth">Refinance at Month: <span id="refinanceMonthValue">60 (5y 0m)</span></label>
+                        <input type="range" id="refinanceMonth" min="1" max="360" value="60">
+                    </div>
+                </div>
+
+                <button id="calculateBtn" class="calculate-btn">📊 Calculate & Update Charts</button>
+
+                <div class="results-section">
+                    <h2>📈 Results</h2>
+                    <div id="results" class="results-content">
+                        Results will appear here...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Charts -->
+            <div class="charts-panel">
+                <div class="chart-tabs">
+                    <button class="tab-btn active" data-chart="balance">Balance Over Time</button>
+                    <button class="tab-btn" data-chart="payments">Principal vs Interest</button>
+                    <button class="tab-btn" data-chart="refinance">Refinance Analysis</button>
+                    <button class="tab-btn" data-chart="savings">Savings Analysis</button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="balanceChart" class="chart-canvas active"></canvas>
+                    <canvas id="paymentsChart" class="chart-canvas"></canvas>
+                    <canvas id="refinanceChart" class="chart-canvas"></canvas>
+                    <canvas id="savingsChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
