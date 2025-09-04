@@ -32,7 +32,6 @@ header h1 {
     background: linear-gradient(45deg, #4CAF50, #2196F3);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 header p {
@@ -47,7 +46,6 @@ header p {
     min-height: 600px;
 }
 
-/* Left Panel Styles */
 .controls-panel {
     background: rgba(0, 0, 0, 0.4);
     padding: 25px;
@@ -73,7 +71,6 @@ header p {
 .input-group label, .slider-group label {
     display: block;
     margin-bottom: 5px;
-    font-weight: 500;
     color: #e0e0e0;
 }
 
@@ -88,7 +85,7 @@ header p {
     transition: border-color 0.3s ease;
 }
 
-.input-group input[type="number"]:focus {
+.input-group input:focus {
     outline: none;
     border-color: #4CAF50;
     box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
@@ -100,12 +97,9 @@ header p {
     border-radius: 5px;
     background: #555;
     outline: none;
-    -webkit-appearance: none;
 }
 
 .slider-group input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -129,8 +123,8 @@ header p {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
     margin-bottom: 20px;
+    transition: all 0.3s ease;
 }
 
 .calculate-btn:hover {
@@ -147,7 +141,6 @@ header p {
     line-height: 1.6;
 }
 
-/* Right Panel Styles - FIXED VERSION */
 .charts-panel {
     background: rgba(0, 0, 0, 0.4);
     padding: 25px;
@@ -156,104 +149,64 @@ header p {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chart-tabs {
-    display: flex;
-    margin-bottom: 20px;
-    background: #2b2b2b;
-    border-radius: 10px;
-    padding: 5px;
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 12px 8px;
-    background: transparent;
-    color: #b0b0b0;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.tab-btn.active {
-    background: #4CAF50;
-    color: white;
-}
-
-.tab-btn:hover:not(.active) {
-    background: #555;
-    color: white;
-}
-
-.chart-container {
-    position: relative;
-    height: 500px;
-    width: 100%;
-}
-
-.chart-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
     height: 100%;
-    display: none; /* Hide all charts by default */
 }
 
-.chart-canvas.active {
-    display: block !important; /* Show only active chart */
+.chart-item {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Responsive Design */
+.chart-item h3 {
+    color: #4CAF50;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.chart-item canvas {
+    width: 100% !important;
+    height: 300px !important;
+}
+
 @media (max-width: 1200px) {
     .app-layout {
         grid-template-columns: 1fr;
         gap: 20px;
     }
-    
-    .controls-panel {
-        order: 2;
+    .charts-grid {
+        grid-template-columns: 1fr;
     }
-    
-    .charts-panel {
-        order: 1;
+    .chart-item canvas {
+        height: 250px !important;
     }
 }
 
 @media (max-width: 768px) {
-    .container {
-        padding: 10px;
-    }
-    
     header h1 {
         font-size: 2em;
     }
-    
-    .chart-tabs {
-        flex-direction: column;
-    }
-    
-    .tab-btn {
-        margin-bottom: 5px;
+    .chart-item canvas {
+        height: 200px !important;
     }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
 }
-
 ::-webkit-scrollbar-track {
     background: #2b2b2b;
 }
-
 ::-webkit-scrollbar-thumb {
     background: #555;
     border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: #777;
 }
