@@ -53,26 +53,29 @@
 
                 <div class="results-section">
                     <h2>📈 Results</h2>
-                    <div id="results" class="results-content">
-                        Results will appear here...
-                    </div>
+                    <div id="results" class="results-content">Results will appear here...</div>
                 </div>
             </div>
 
             <!-- Right Panel: Charts -->
             <div class="charts-panel">
-                <div class="chart-tabs">
-                    <button class="tab-btn active" data-chart="balance">Balance Over Time</button>
-                    <button class="tab-btn" data-chart="payments">Principal vs Interest</button>
-                    <button class="tab-btn" data-chart="refinance">Refinance Analysis</button>
-                    <button class="tab-btn" data-chart="savings">Savings Analysis</button>
-                </div>
-                
-                <div class="chart-container">
-                    <canvas id="balanceChart" class="chart-canvas active"></canvas>
-                    <canvas id="paymentsChart" class="chart-canvas"></canvas>
-                    <canvas id="refinanceChart" class="chart-canvas"></canvas>
-                    <canvas id="savingsChart" class="chart-canvas"></canvas>
+                <div class="charts-grid">
+                    <div class="chart-item">
+                        <h3>Loan Balance Over Time</h3>
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                    <div class="chart-item">
+                        <h3>Monthly Principal vs Interest</h3>
+                        <canvas id="paymentsChart"></canvas>
+                    </div>
+                    <div class="chart-item">
+                        <h3>Total Cost vs Refinance Timing</h3>
+                        <canvas id="refinanceChart"></canvas>
+                    </div>
+                    <div class="chart-item">
+                        <h3>Potential Savings by Refinance Month</h3>
+                        <canvas id="savingsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
