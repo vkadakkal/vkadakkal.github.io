@@ -160,7 +160,11 @@ class MortgageCalculator {
                 origLoanTotal, origTotalWithClosing,
                 rRate: rR, rMonth: rM, rTotal, savings, dp
             });
-            this.updateCharts(origSched, principal, initRate, rR, years, rM, ccPct, initCC, loanType);
+            this.updateBalanceChart(origSched);
+            this.updatePaymentsChart(origSched);
+            this.updateRefinanceChart(principal, initRate, rR, years, rM, ccPct, origSched, initCC);
+            this.updateSavingsChart(principal, initRate, rR, years, ccPct, origSched, initCC);
+
         } catch (err) {
             this.results.innerHTML = `<div style="color:#ff6b6b;"><strong>Error:</strong> ${err.message}</div>`;
         }
