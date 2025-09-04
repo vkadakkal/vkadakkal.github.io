@@ -91,21 +91,21 @@ class MortgageCalculator {
 
     calculateRefinanceAnalysis(principal, origRate, refiRate, years, refiMonth, closingCostsPct) {
         const origSchedule = this.generateAmortizationSchedule(principal, origRate, years);
-        
         if (refiMonth > origSchedule.length) return Infinity;
 
         // Cost before refinance
-        const costBefore = origSchedule.slice(0, refiMonth - 1)
-            .reduce((sum, payment) => sum + payment.totalPayment, 0);
+        const costBefore = origSchedule
+            .slice(0, refiMonth - 1)
+            .reduce((sum, p) => sum + p.totalPayment, 0);
 
-        // Remaining balance at refinance
+        // Remaining balance & closing costs
         const remainingBalance = origSchedule[refiMonth - 1].balance;
         const closingCosts = remainingBalance * (closingCostsPct / 100);
 
         // New schedule after refinance
         const remainingYears = Math.max(1, years - Math.floor((refiMonth - 1) / 12));
         const refiSchedule = this.generateAmortizationSchedule(remainingBalance, refiRate, remainingYears);
-        const costAfter = refiSchedule.reduce((sum, payment) => sum + payment.totalPayment, 0);
+        const costAfter = refiSchedule.reduce((sum, p) => sum + p.totalPayment, 0);
 
         return costBefore + costAfter + closingCosts;
     }
@@ -127,7 +127,7 @@ class MortgageCalculator {
             // Original loan calculations
             const origSchedule = this.generateAmortizationSchedule(principal, origRate, years);
             const monthlyPmt = this.monthlyPayment(principal, origRate, years);
-            const origTotal = origSchedule.reduce((sum, payment) => sum + payment.totalPayment, 0);
+            const origTotal = origSchedule.reduce((sum, p) => sum + p.totalPayment, 0);
             const initialClosingCosts = homePrice * (closingCostsPct / 100);
 
             // Refinance analysis
@@ -160,7 +160,6 @@ class MortgageCalculator {
     updateResults(data) {
         const years = Math.floor(data.refiMonth / 12);
         const months = data.refiMonth % 12;
-        
         const savingsColor = data.savings > 0 ? '#4CAF50' : '#ff6b6b';
         const savingsIcon = data.savings > 0 ? '💰' : '💸';
         const savingsText = data.savings > 0 ? 'Savings' : 'Additional Cost';
@@ -196,168 +195,46 @@ class MortgageCalculator {
 
     updateBalanceChart(schedule) {
         const ctx = this.balanceChart.getContext('2d');
-        
-        if (this.charts.balance) {
-            this.charts.balance.destroy();
-        }
+        if (this.charts.balance) this.charts.balance.destroy();
 
         this.charts.balance = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: schedule.map(item => item.month),
-                datasets: [{
-                    label: 'Loan Balance',
-                    data: schedule.map(item => item.balance),
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                    tension: 0.1,
-                    fill: true
-                }]
+                labels: schedule.map(p => p.month),
+                datasets: [{ label: 'Loan Balance', data: schedule.map(p => p.balance), borderColor: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.1)', fill: true }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Loan Balance Over Time',
-                        color: '#ffffff'
-                    },
-                    legend: {
-                        labels: {
-                            color: '#ffffff'
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Month',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Balance ($)',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: function(value) {
-                                return '$' + (value / 1000).toFixed(0) + 'K';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Loan Balance Over Time', color: '#fff' } }, scales: { x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, y: { ticks: { color: '#fff', callback: v => '$' + (v/1000).toFixed(0) + 'K' }, grid: { color: 'rgba(255,255,255,0.1)' } } } }
         });
     }
 
     updatePaymentsChart(schedule) {
         const ctx = this.paymentsChart.getContext('2d');
-        
-        if (this.charts.payments) {
-            this.charts.payments.destroy();
-        }
+        if (this.charts.payments) this.charts.payments.destroy();
 
         this.charts.payments = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: schedule.map(item => item.month),
+                labels: schedule.map(p => p.month),
                 datasets: [
-                    {
-                        label: 'Principal Payment',
-                        data: schedule.map(item => item.principalPayment),
-                        borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Interest Payment',
-                        data: schedule.map(item => item.interest),
-                        borderColor: '#FF5722',
-                        backgroundColor: 'rgba(255, 87, 34, 0.1)',
-                        tension: 0.1
-                    }
+                    { label: 'Principal', data: schedule.map(p => p.principalPayment), borderColor: '#2196F3', backgroundColor: 'rgba(33,150,243,0.1)', fill: true },
+                    { label: 'Interest', data: schedule.map(p => p.interest), borderColor: '#FF5722', backgroundColor: 'rgba(255,87,34,0.1)', fill: true }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Monthly Principal vs Interest Payments',
-                        color: '#ffffff'
-                    },
-                    legend: {
-                        labels: {
-                            color: '#ffffff'
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Month',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Payment ($)',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Monthly Principal vs Interest', color: '#fff' } }, scales: { x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } } } }
         });
     }
 
     updateRefinanceChart(principal, origRate, refiRate, years, refiMonth, closingCostsPct, origSchedule) {
         const ctx = this.refinanceChart.getContext('2d');
-        
-        if (this.charts.refinance) {
-            this.charts.refinance.destroy();
-        }
+        if (this.charts.refinance) this.charts.refinance.destroy();
 
-        // Calculate total costs for different refinance months
         const refiMonths = [];
         const totalCosts = [];
-        const origTotal = origSchedule.reduce((sum, payment) => sum + payment.totalPayment, 0);
+        const origTotal = origSchedule.reduce((sum, p) => sum + p.totalPayment, 0);
 
-        for (let month = 1; month <= Math.min(origSchedule.length, 240); month += 6) {
-            const cost = this.calculateRefinanceAnalysis(principal, origRate, refiRate, years, month, closingCostsPct);
-            refiMonths.push(month);
-            totalCosts.push(cost);
+        for (let m = 1; m <= Math.min(origSchedule.length, 240); m += 6) {
+            refiMonths.push(m);
+            totalCosts.push(this.calculateRefinanceAnalysis(principal, origRate, refiRate, years, m, closingCostsPct));
         }
 
         this.charts.refinance = new Chart(ctx, {
@@ -365,176 +242,50 @@ class MortgageCalculator {
             data: {
                 labels: refiMonths,
                 datasets: [
-                    {
-                        label: 'Total Cost with Refinance',
-                        data: totalCosts,
-                        borderColor: '#9C27B0',
-                        backgroundColor: 'rgba(156, 39, 176, 0.1)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Original Total Cost',
-                        data: refiMonths.map(() => origTotal),
-                        borderColor: '#FF9800',
-                        borderDash: [5, 5],
-                        tension: 0.1
-                    }
+                    { label: 'Cost w/ Refi', data: totalCosts, borderColor: '#9C27B0', fill: false },
+                    { label: 'Original Cost', data: refiMonths.map(() => origTotal), borderColor: '#FF9800', borderDash: [5,5], fill: false }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Total Cost vs Refinance Timing',
-                        color: '#ffffff'
-                    },
-                    legend: {
-                        labels: {
-                            color: '#ffffff'
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Refinance Month',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Total Cost ($)',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: function(value) {
-                                return '$' + (value / 1000).toFixed(0) + 'K';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Total Cost vs Refinance Timing', color: '#fff' } }, scales: { x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, y: { ticks: { color: '#fff', callback: v => '$' + (v/1000).toFixed(0) + 'K' }, grid: { color: 'rgba(255,255,255,0.1)' } } } }
         });
     }
 
     updateSavingsChart(principal, origRate, refiRate, years, closingCostsPct, origSchedule) {
         const ctx = this.savingsChart.getContext('2d');
-        
-        if (this.charts.savings) {
-            this.charts.savings.destroy();
-        }
+        if (this.charts.savings) this.charts.savings.destroy();
 
-        // Calculate savings for different refinance months
         const refiMonths = [];
-        const savings = [];
-        const origTotal = origSchedule.reduce((sum, payment) => sum + payment.totalPayment, 0);
+        const savingsPos = [];
+        const savingsNeg = [];
+        const origTotal = origSchedule.reduce((sum, p) => sum + p.totalPayment, 0);
 
-        for (let month = 1; month <= Math.min(origSchedule.length, 240); month += 6) {
-            const cost = this.calculateRefinanceAnalysis(principal, origRate, refiRate, years, month, closingCostsPct);
-            refiMonths.push(month);
-            savings.push(origTotal - cost);
+        for (let m = 1; m <= Math.min(origSchedule.length, 240); m += 6) {
+            const cost = this.calculateRefinanceAnalysis(principal, origRate, refiRate, years, m, closingCostsPct);
+            refiMonths.push(m);
+            const diff = origTotal - cost;
+            savingsPos.push(diff >= 0 ? diff : null);
+            savingsNeg.push(diff < 0 ? diff : null);
         }
 
         this.charts.savings = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: refiMonths,
-                datasets: [{
-                    label: 'Potential Savings',
-                    data: savings,
-                    borderColor: '#4CAF50',
-                    backgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        return value >= 0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)';
-                    },
-                    pointBackgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        return value >= 0 ? '#4CAF50' : '#F44336';
-                    },
-                    tension: 0.1,
-                    fill: true
-                }]
+                datasets: [
+                    { label: 'Savings', data: savingsPos, borderColor: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.2)', fill: true, spanGaps: true },
+                    { label: 'Additional Cost', data: savingsNeg, borderColor: '#F44336', backgroundColor: 'rgba(244,67,54,0.2)', fill: true, spanGaps: true }
+                ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Potential Savings by Refinance Month',
-                        color: '#ffffff'
-                    },
-                    legend: {
-                        labels: {
-                            color: '#ffffff'
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Refinance Month',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Savings ($)',
-                            color: '#ffffff'
-                        },
-                        ticks: {
-                            color: '#ffffff',
-                            callback: function(value) {
-                                return '$' + (value / 1000).toFixed(0) + 'K';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Potential Savings by Refinance Month', color: '#fff' } }, scales: { x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }, y: { ticks: { color: '#fff', callback: v => '$' + (v/1000).toFixed(0) + 'K' }, grid: { color: 'rgba(255,255,255,0.1)' } } } }
         });
     }
 
     switchChart(chartType) {
-        // Update tab buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-chart="${chartType}"]`).classList.add('active');
-
-        // Show selected chart
-        document.querySelectorAll('.chart-canvas').forEach(canvas => {
-            canvas.classList.remove('active');
-        });
+        document.querySelectorAll('.chart-canvas').forEach(c => c.classList.remove('active'));
         document.getElementById(`${chartType}Chart`).classList.add('active');
     }
 }
 
-// Initialize the calculator when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    new MortgageCalculator();
-});
+document.addEventListener('DOMContentLoaded', () => new MortgageCalculator());
