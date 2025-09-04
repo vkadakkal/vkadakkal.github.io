@@ -52,18 +52,18 @@ class MortgageCalculator {
     generateAmortizationSchedule(principal, rate, years) {
         const mp = this.monthlyPayment(principal, rate, years);
         let bal = principal, sched = [];
-        const totalMonths = Math.round(years * 12); // Ensure integer
+        const totalMonths = Math.round(years * 12);
         for (let m = 1; m <= totalMonths; m++) {
             const interest = bal * (rate / 100 / 12);
             const pmt = mp - interest;
             bal = Math.max(0, bal - pmt);
             sched.push({ month: m, principalPayment: pmt, interest, balance: bal, totalPayment: pmt + interest });
-            if (bal <= 0.01) break; // Use small threshold instead of exact 0
+            if (bal <= 0.01) break;
         }
         return sched;
     }
 
-    calculateRefinanceAnalysis(principal, oRate, rRate, years, rMonth, ccPct) {
+    calculateRefinanceAnalysis(principal, oRate, rRate, years, rMonth, ccPct, initialClosingCosts) {
         const origSched = this.generateAmortizationSchedule(principal, oRate, years);
         if (rMonth > origSched.length) return Infinity;
 
@@ -72,14 +72,14 @@ class MortgageCalculator {
         const remBal = origSched[rMonth - 1].balance;
         const refiClosingCosts = remBal * (ccPct / 100);
         
-        // FIXED: Use exact remaining months from original schedule
         const remainingMonths = origSched.length - (rMonth - 1);
         const remainingYears = remainingMonths / 12;
         
         const refiSched = this.generateAmortizationSchedule(remBal, rRate, remainingYears);
         const afterCost = refiSched.reduce((sum, x) => sum + x.totalPayment, 0);
 
-        return beforeCost + afterCost + refiClosingCosts;
+        // FIXED: Include ALL costs for fair comparison
+        return beforeCost + afterCost + refiClosingCosts + initialClosingCosts;
     }
 
     calculate() {
@@ -98,7 +98,9 @@ class MortgageCalculator {
             const initCC = hp * (ccPct / 100);
             
             const origTotalWithClosing = origLoanTotal + initCC;
-            const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
+            
+            // FIXED: Pass initial closing costs to refinance calculation
+            const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct, initCC);
             const savings = origTotalWithClosing - rTotal;
 
             this.updateResults({
@@ -141,6 +143,7 @@ class MortgageCalculator {
                 <div style="color:${clr};background:${bgClr};padding:10px;border-radius:8px;margin-top:10px;border-left:4px solid ${clr};">
                     <strong style="font-size:1.1em;">${icon} ${txt}: $${Math.abs(data.savings).toLocaleString()}</strong>
                     ${data.savings < 0 ? '<div style="font-size:0.9em;margin-top:5px;">⚠️ Refinancing would cost more</div>' : ''}
+                    ${Math.abs(data.savings) < 1000 ? '<div style="font-size:0.9em;margin-top:5px;">💡 Minimal difference - consider other factors</div>' : ''}
                 </div>
             </div>`;
     }
@@ -197,9 +200,9 @@ class MortgageCalculator {
         
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
             monthsArr.push(m);
-            costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct));
+            costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC));
         }
-        const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
+        const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct, initCC);
         
         this.charts.refinance = new Chart(ctx,{
             type:'line',
@@ -239,7 +242,7 @@ class MortgageCalculator {
         const origTotalWithClosing = origSched.reduce((s,x)=>s+x.totalPayment,0) + initCC;
         
         for(let m=1; m<=Math.min(origSched.length,240); m+=3){
-            const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct);
+            const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct, initCC);
             const diff = origTotalWithClosing - cost;
             monthsArr.push(m);
             posArr.push(diff>=0?diff:null);
