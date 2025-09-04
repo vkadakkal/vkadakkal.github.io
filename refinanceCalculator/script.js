@@ -65,13 +65,17 @@ class MortgageCalculator {
     calculateRefinanceAnalysis(principal, oRate, rRate, years, rMonth, ccPct) {
         const origSched = this.generateAmortizationSchedule(principal, oRate, years);
         if (rMonth > origSched.length) return Infinity;
-        const beforeCost = origSched.slice(0, rMonth - 1).reduce((s, x) => s + x.totalPayment, 0);
+
+        const beforeCost = origSched.slice(0, rMonth - 1)
+            .reduce((sum, x) => sum + x.totalPayment, 0);
         const remBal = origSched[rMonth - 1].balance;
-        const cc = remBal * (ccPct / 100);
-        const remYears = Math.max(1, years - Math.floor((rMonth - 1) / 12));
+        const closing = remBal * (ccPct / 100);
+        const remMonths = years * 12 - (rMonth - 1);
+        const remYears = Math.max(1, remMonths / 12);
         const refiSched = this.generateAmortizationSchedule(remBal, rRate, remYears);
-        const afterCost = refiSched.reduce((s, x) => s + x.totalPayment, 0);
-        return beforeCost + afterCost + cc;
+        const afterCost = refiSched.reduce((sum, x) => sum + x.totalPayment, 0);
+
+        return beforeCost + afterCost + closing;
     }
 
     calculate() {
@@ -91,27 +95,31 @@ class MortgageCalculator {
             const rTotal = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
             const savings = (origTotal + initCC) - rTotal;
 
-            this.updateResults({ principal, mp, initCC, origTotal: origTotal + initCC,
-                rRate: rR, rMonth: rM, rTotal, savings, dp });
+            this.updateResults({
+                principal, mp, initCC,
+                origTotal: origTotal + initCC,
+                rRate: rR, rMonth: rM, rTotal, savings, dp
+            });
             this.updateCharts(origSched, principal, oR, rR, years, rM, ccPct);
         } catch (err) {
-            this.results.innerHTML = `<div style="color: #ff6b6b;"><strong>Error:</strong> ${err.message}</div>`;
+            this.results.innerHTML = `<div style="color:#ff6b6b;"><strong>Error:</strong> ${err.message}</div>`;
         }
     }
 
     updateResults(data) {
         const yrs = Math.floor(data.rMonth / 12),
               mos = data.rMonth % 12,
-              color = data.savings > 0 ? '#4CAF50' : '#ff6b6b',
+              clr = data.savings > 0 ? '#4CAF50' : '#ff6b6b',
               icon = data.savings > 0 ? '💰' : '💸',
-              text = data.savings > 0 ? 'Savings' : 'Additional Cost';
+              txt = data.savings > 0 ? 'Savings' : 'Additional Cost';
+
         this.results.innerHTML = `
             <div style="margin-bottom:20px;">
                 <h3 style="color:#4CAF50;margin-bottom:10px;">🏠 Loan Details</h3>
                 <div>Principal: <strong>$${data.principal.toLocaleString()}</strong></div>
                 <div>Monthly Payment: <strong>$${data.mp.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
                 <div>Initial Closing Costs: <strong>$${data.initCC.toLocaleString()}</strong></div>
-                <div>Cash at Closing: <strong>$${(data.dp + data.initCC).toLocaleString()}</strong></div>
+                <div>Cash at Closing: <strong>$${(data.dp+data.initCC).toLocaleString()}</strong></div>
                 <div>Total Cost (30yr): <strong>$${data.origTotal.toLocaleString()}</strong></div>
             </div>
             <div>
@@ -119,8 +127,8 @@ class MortgageCalculator {
                 <div>New Rate: <strong>${data.rRate}%</strong></div>
                 <div>Refinance at: <strong>Month ${data.rMonth}</strong> (${yrs}y ${mos}m)</div>
                 <div>Total Cost with Refi: <strong>$${data.rTotal.toLocaleString()}</strong></div>
-                <div style="color:${color};font-size:1.1em;margin-top:10px;">
-                    <strong>${icon} ${text}: $${Math.abs(data.savings).toLocaleString()}</strong>
+                <div style="color:${clr};font-size:1.1em;margin-top:10px;">
+                    <strong>${icon} ${txt}: $${Math.abs(data.savings).toLocaleString()}</strong>
                 </div>
             </div>`;
     }
@@ -136,27 +144,15 @@ class MortgageCalculator {
         const ctx = this.balanceChart.getContext('2d');
         if (this.charts.balance) this.charts.balance.destroy();
         this.charts.balance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: sched.map(x => x.month),
-                datasets: [{
-                    label: 'Loan Balance',
-                    data: sched.map(x => x.balance),
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76,175,80,0.1)',
-                    fill: true,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#fff' } } },
-                scales: {
-                    x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                    y: { ticks: { color: '#fff', callback: v => '$' + (v/1000).toFixed(0) + 'K' },
-                         grid: { color: 'rgba(255,255,255,0.1)' } }
-                }
+            type:'line',
+            data:{ labels:sched.map(x=>x.month), datasets:[{
+                label:'Loan Balance', data:sched.map(x=>x.balance),
+                borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.1)', fill:true, tension:0.1
+            }]},
+            options:{ responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ labels:{ color:'#fff' }}},
+                scales:{ x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
+                         y:{ ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` }, grid:{ color:'rgba(255,255,255,0.1)'}}}
             }
         });
     }
@@ -165,98 +161,92 @@ class MortgageCalculator {
         const ctx = this.paymentsChart.getContext('2d');
         if (this.charts.payments) this.charts.payments.destroy();
         this.charts.payments = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: sched.map(x => x.month),
-                datasets: [
-                    {
-                        label: 'Principal',
-                        data: sched.map(x => x.principalPayment),
-                        borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33,150,243,0.1)',
-                        fill: true,
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Interest',
-                        data: sched.map(x => x.interest),
-                        borderColor: '#FF5722',
-                        backgroundColor: 'rgba(255,87,34,0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#fff' } } },
-                scales: {
-                    x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                    y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
-                }
+            type:'line',
+            data:{ labels:sched.map(x=>x.month), datasets:[
+                { label:'Principal', data:sched.map(x=>x.principalPayment),
+                  borderColor:'#2196F3', backgroundColor:'rgba(33,150,243,0.1)', fill:true, tension:0.1 },
+                { label:'Interest', data:sched.map(x=>x.interest),
+                  borderColor:'#FF5722', backgroundColor:'rgba(255,87,34,0.1)', fill:true, tension:0.1 }
+            ]},
+            options:{ responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ labels:{ color:'#fff' }}},
+                scales:{ x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
+                         y:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}}}
             }
         });
     }
 
-    updateRefinanceChart(principal, oRate, rRate, years, rMonth, ccPct, origSched) {
+    updateRefinanceChart(principal, oR, rR, years, rM, ccPct, origSched) {
         const ctx = this.refinanceChart.getContext('2d');
         if (this.charts.refinance) this.charts.refinance.destroy();
-        const monthsArr = [], costsArr = [];
-        const origTotal = origSched.reduce((s,x) => s + x.totalPayment, 0);
-        for (let m=1; m<=Math.min(origSched.length,240); m+=6) {
+        const monthsArr=[], costsArr=[];
+        const origTotal = origSched.reduce((s,x)=>s+x.totalPayment,0);
+        for(let m=1; m<=Math.min(origSched.length,240); m+=3){
             monthsArr.push(m);
-            costsArr.push(this.calculateRefinanceAnalysis(principal, oRate, rRate, years, m, ccPct));
+            costsArr.push(this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct));
         }
-        this.charts.refinance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: monthsArr,
-                datasets: [
-                    { label:'Cost w/ Refi', data:costsArr, borderColor:'#9C27B0', fill:false, tension:0.1 },
-                    { label:'Original Cost', data:monthsArr.map(()=>origTotal), borderColor:'#FF9800', borderDash:[5,5], fill:false, tension:0.1 }
+        const currentCost = this.calculateRefinanceAnalysis(principal, oR, rR, years, rM, ccPct);
+        this.charts.refinance = new Chart(ctx,{
+            type:'line',
+            data:{
+                labels:monthsArr,
+                datasets:[
+                    { label:'Cost w/ Refi', data:costsArr,
+                      borderColor:'#9C27B0', backgroundColor:'rgba(156,39,176,0.1)',
+                      fill:false, tension:0.4, pointRadius:1, pointHoverRadius:4 },
+                    { label:'Original Cost', data:monthsArr.map(()=>origTotal),
+                      borderColor:'#FF9800', borderDash:[5,5], fill:false, pointRadius:0 },
+                    { label:'Current Selection', data:monthsArr.map(m=>m===rM?currentCost:null),
+                      borderColor:'#4CAF50', backgroundColor:'#4CAF50',
+                      showLine:false, fill:false, pointRadius:6, pointHoverRadius:8 }
                 ]
             },
-            options: {
-                responsive:true,
-                maintainAspectRatio:false,
+            options:{
+                responsive:true, maintainAspectRatio:false,
                 plugins:{ legend:{ labels:{ color:'#fff' }}},
                 scales:{
-                    x:{ ticks:{color:'#fff'}, grid:{color:'rgba(255,255,255,0.1)'}},
-                    y:{ ticks:{color:'#fff', callback:v=>'$'+(v/1000).toFixed(0)+'K'}, grid:{color:'rgba(255,255,255,0.1)'}}
+                    x:{ title:{ display:true, text:'Refinance Month', color:'#fff'},
+                        ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
+                    y:{ title:{ display:true, text:'Total Cost ($)', color:'#fff'},
+                        ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
+                        grid:{ color:'rgba(255,255,255,0.1)'} }
                 }
             }
         });
     }
 
-    updateSavingsChart(principal, oRate, rRate, years, ccPct, origSched) {
+    updateSavingsChart(principal, oR, rR, years, ccPct, origSched) {
         const ctx = this.savingsChart.getContext('2d');
         if (this.charts.savings) this.charts.savings.destroy();
-        const monthsArr = [], posArr = [], negArr = [];
-        const origTotal = origSched.reduce((s,x) => s + x.totalPayment, 0);
-        for (let m=1; m<=Math.min(origSched.length,240); m+=6) {
-            const cost = this.calculateRefinanceAnalysis(principal, oRate, rRate, years, m, ccPct);
+        const monthsArr=[], posArr=[], negArr=[];
+        const origTotal = origSched.reduce((s,x)=>s+x.totalPayment,0);
+        for(let m=1; m<=Math.min(origSched.length,240); m+=3){
+            const cost = this.calculateRefinanceAnalysis(principal, oR, rR, years, m, ccPct);
             const diff = origTotal - cost;
             monthsArr.push(m);
             posArr.push(diff>=0?diff:null);
             negArr.push(diff<0?diff:null);
         }
-        this.charts.savings = new Chart(ctx, {
+        this.charts.savings = new Chart(ctx,{
             type:'line',
             data:{
                 labels:monthsArr,
                 datasets:[
-                    { label:'Savings', data:posArr, borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.2)', fill:true, spanGaps:true, tension:0.1 },
-                    { label:'Additional Cost', data:negArr, borderColor:'#F44336', backgroundColor:'rgba(244,67,54,0.2)', fill:true, spanGaps:true, tension:0.1 }
+                    { label:'Savings', data:posArr,
+                      borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,0.2)',
+                      fill:true, spanGaps:true, tension:0.1 },
+                    { label:'Additional Cost', data:negArr,
+                      borderColor:'#F44336', backgroundColor:'rgba(244,67,54,0.2)',
+                      fill:true, spanGaps:true, tension:0.1 }
                 ]
             },
             options:{
-                responsive:true,
-                maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff'}}},
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ labels:{ color:'#fff' }}},
                 scales:{
-                    x:{ ticks:{color:'#fff'}, grid:{color:'rgba(255,255,255,0.1)'}},
-                    y:{ ticks:{color:'#fff', callback:v=>'$'+(v/1000).toFixed(0)+'K'}, grid:{color:'rgba(255,255,255,0.1)'}}
+                    x:{ ticks:{ color:'#fff' }, grid:{ color:'rgba(255,255,255,0.1)'}},
+                    y:{ ticks:{ color:'#fff', callback:v=>`$${(v/1000).toFixed(0)}K` },
+                        grid:{ color:'rgba(255,255,255,0.1)'} }
                 }
             }
         });
