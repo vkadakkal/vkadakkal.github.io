@@ -253,14 +253,14 @@ class MortgageCalculator {
             options:{
                 responsive:true, maintainAspectRatio:false,
                 plugins:{
-                    legend:{ labels:{ color:'#fff', font:{size:24} }},
+                    legend:{ labels:{ color:'#fff', font:{size:18} }},
                     title: {display: false}
                 },
                 scales:{
                     x:{ 
                         title:{ display:true, text:'Month', color:'#fff', font:{size:20} },
                         ticks:{
-                            color:'#fff', font:{size:24}, stepSize: 12,
+                            color:'#fff', font:{size:18}, stepSize: 12,
                             callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
                         },
                         grid:{ color:'rgba(255,255,255,0.1)' }
@@ -303,11 +303,11 @@ class MortgageCalculator {
             },
             options:{
                 responsive:true, maintainAspectRatio:false,
-                plugins:{ legend:{ labels:{ color:'#fff', font:{size:24} }},
+                plugins:{ legend:{ labels:{ color:'#fff', font:{size:18} }},
                           title:{display:false} },
                 scales:{
                     x:{ title:{ display:true, text:'Refinance Month', color:'#fff', font:{size:20} },
-                        ticks:{ color:'#fff', font:{size:24}, stepSize:12,
+                        ticks:{ color:'#fff', font:{size:18}, stepSize:12,
                             callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
                         },
                         grid:{ color:'rgba(255,255,255,0.1)' }
@@ -348,7 +348,7 @@ class MortgageCalculator {
             options:{
                 responsive:true, maintainAspectRatio:false,
                 plugins:{ 
-                    legend:{ labels:{ color:'#fff', font:{size:24} }},
+                    legend:{ labels:{ color:'#fff', font:{size:18} }},
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -363,13 +363,13 @@ class MortgageCalculator {
                 scales:{
                     x:{ title:{ display:true, text:'Refinance Month', color:'#fff', font:{size:20}},
                         ticks:{
-                            color:'#fff', font:{size:24}, stepSize:12,
+                            color:'#fff', font:{size:18}, stepSize:12,
                             callback: v => (v % 12 === 1 || v === 1) ? v : ((v % 12 === 0) ? v : "")
                         },
                         grid:{ color:'rgba(255,255,255,0.1)'}
                     },
                     y:{ title:{ display:true, text:'Amount ($)', color:'#fff', font:{size:20} },
-                        ticks:{ color:'#fff', font:{size:24}, callback:v=>`$${(v/1000).toFixed(0)}K` },
+                        ticks:{ color:'#fff', font:{size:18}, callback:v=>`$${(v/1000).toFixed(0)}K` },
                         grid:{ color:'rgba(255,255,255,0.1)' }
                     }
                 }
