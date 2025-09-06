@@ -23,10 +23,10 @@ header p {font-size: 1.2em;color: #b0b0b0;}
 .calculate-btn:hover {transform:translateY(-2px);box-shadow:0 8px 25px rgba(76,175,80,0.3);}
 .results-content {background:#2b2b2b;padding:20px;border-radius:10px;border:1px solid #555;font-size:14px;line-height:1.6;}
 .charts-panel {background:rgba(0,0,0,0.4);padding:25px;border-radius:15px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);}
-.charts-grid {display: grid; grid-template-columns:1fr 1fr; gap:20px; height:100%;}
+.charts-grid {display: flex; flex-direction: column; gap: 30px;}
 .chart-item {background:rgba(0,0,0,0.3);border-radius:10px;padding:15px;border:1px solid rgba(255,255,255,0.1);}
 .chart-item h3 {color:#4CAF50; font-size:1.2em; margin-bottom:10px;text-align: center;}
-.chart-item canvas {width:100%!important;height:340px!important;}
+.chart-item canvas {width:100%!important;height:340px!important;min-height: 220px;}
 @media (max-width: 1200px) {
     .app-layout {grid-template-columns:1fr;gap:20px;}.charts-grid{grid-template-columns:1fr;}.chart-item canvas{height:250px!important;}
 }
