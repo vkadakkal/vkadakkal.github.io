@@ -22,7 +22,7 @@
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       padding: 2rem;
-      max-width: 500px;
+      max-width: 520px;
       margin: 0 auto;
       position: relative;
     }
@@ -44,17 +44,24 @@
       margin: 1rem 0 0.5rem 0;
       color: #ffd32a;
     }
+    .field-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
     input, button {
       padding: 0.5rem 1rem;
       border-radius: 6px;
       border: none;
-      margin-right: 0.5rem;
       margin-bottom: 1rem;
     }
     input {
-      width: calc(100% - 1rem);
       background: #393979;
       color: #fff;
+      width: 100%;
+    }
+    .field-row input {
+      margin-right: 0;
     }
     button {
       background: #e84118;
@@ -62,6 +69,7 @@
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
+      margin-right: 0.5rem;
     }
     button:hover {
       background: #ffd32a;
@@ -76,6 +84,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
     }
     .pair-list {
       margin-top: 1.5rem;
@@ -84,8 +93,19 @@
       padding: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+    .person-info {
+      display: inline-block;
+      min-width: 120px;
+    }
+    .label-small {
+      color: #888;
+      font-size: 0.9em;
+      margin-left: 0.3em;
+      font-weight: normal;
+    }
     @media (max-width: 600px) {
       .card { padding: 1rem; }
+      .field-row { flex-direction: column; gap: 0.2rem; }
     }
   </style>
 </head>
@@ -95,7 +115,10 @@
     <div id="statusMsg"></div>
     <form id="nameForm" autocomplete="off">
       <label for="nameInput">Add Participant</label>
-      <input type="text" id="nameInput" placeholder="Enter name">
+      <div class="field-row">
+        <input type="text" id="nameInput" placeholder="Enter name">
+        <input type="text" id="familyInput" placeholder="Family ID">
+      </div>
       <button type="submit">Add</button>
       <button type="button" id="sortBtn" style="margin-left:0.3rem;">Sort Alphabetically</button>
     </form>
@@ -106,6 +129,7 @@
   <script>
     const names = [];
     const nameInput = document.getElementById('nameInput');
+    const familyInput = document.getElementById('familyInput');
     const nameForm = document.getElementById('nameForm');
     const nameList = document.getElementById('nameList');
     const drawBtn = document.getElementById('drawBtn');
@@ -125,11 +149,11 @@
 
     function updateNameList() {
       nameList.innerHTML = '';
-      names.forEach((n, idx) => {
+      names.forEach((person, idx) => {
         const li = document.createElement('li');
         li.className = 'name-item';
-        li.innerHTML = `<span>${n}</span>
-          <button onclick="removeName(${idx})" aria-label="Delete ${n}">Delete</button>`;
+        li.innerHTML = `<span class="person-info">${person.name} <span class="label-small">(Family: ${person.family})</span></span>
+          <button onclick="removeName(${idx})" aria-label="Delete ${person.name}">Delete</button>`;
         nameList.appendChild(li);
       });
     }
@@ -142,15 +166,17 @@
     nameForm.onsubmit = function(e) {
       e.preventDefault();
       const val = nameInput.value.trim();
-      if (val.length > 0 && !names.includes(val)) {
-        names.push(val);
+      const fam = familyInput.value.trim();
+      if (val.length > 0 && fam.length > 0 && !names.some(n => n.name === val)) {
+        names.push({ name: val, family: fam });
         nameInput.value = '';
+        familyInput.value = '';
         updateNameList();
       }
     };
 
     sortBtn.onclick = function() {
-      names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      names.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
       updateNameList();
     };
 
@@ -162,9 +188,9 @@
           return response.json();
         })
         .then(loaded => {
-          if (Array.isArray(loaded) && loaded.every(x => typeof x == "string")) {
+          if (Array.isArray(loaded) && loaded.every(x => x.name && x.family)) {
             names.length = 0;
-            loaded.forEach(name => names.push(name));
+            loaded.forEach(person => names.push({ name: person.name, family: person.family }));
             updateNameList();
             showStatus('Loaded participants from list.json');
           }
@@ -175,17 +201,21 @@
     });
 
     function secretSantaDraw(arr) {
+      // Exclude assignments within the same family
       let givers = arr.slice();
       let receivers = arr.slice();
       let valid = false, result = [];
-      while (!valid && arr.length > 1) {
+      let attempts = 0;
+      while (!valid && arr.length > 1 && attempts < 2000) {
+        attempts++;
+        // Shuffle receivers
         for (let i = receivers.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
         }
-        valid = !givers.some((g, i) => g === receivers[i]);
+        valid = givers.every((g, i) => g.name !== receivers[i].name && g.family !== receivers[i].family);
         if (valid) {
-          result = givers.map((g, i) => ({giver: g, receiver: receivers[i]}));
+          result = givers.map((g, i) => ({giver: g.name, receiver: receivers[i].name}));
         }
       }
       return result;
@@ -193,13 +223,13 @@
 
     drawBtn.onclick = function() {
       if (names.length < 2) {
-        alert('Enter at least 2 names.');
+        alert('Enter at least 2 participants.');
         return;
       }
       const pairs = secretSantaDraw(names);
       if (!pairs.length) {
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<b>Could not find a valid match. Try again!</b>';
+        resultDiv.innerHTML = '<b>No valid match found. Try again or check family assignments!</b>';
         return;
       }
       resultDiv.style.display = 'block';
