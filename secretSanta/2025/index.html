@@ -82,7 +82,7 @@
       <label for="nameInput">Add Participant</label>
       <input type="text" id="nameInput" placeholder="Enter name">
       <button type="submit">Add</button>
-      <button type="button" id="sortBtn" style="margin-left:0.5rem;">Sort Alphabetically</button>
+      <button type="button" id="sortBtn" style="margin-left:0.3rem;">Sort Alphabetically</button>
     </form>
     <ul id="nameList"></ul>
     <button id="drawBtn" style="margin-top:1rem; width:100%;">Draw Names</button>
@@ -128,13 +128,31 @@
       updateNameList();
     };
 
+    // Auto-load list.json if present on server
+    window.addEventListener('DOMContentLoaded', function() {
+      fetch('list.json')
+        .then(response => {
+          if (!response.ok) throw new Error('No list.json found');
+          return response.json();
+        })
+        .then(loaded => {
+          if (Array.isArray(loaded) && loaded.every(x => typeof x == "string")) {
+            names.length = 0;
+            loaded.forEach(name => names.push(name));
+            updateNameList();
+          }
+        })
+        .catch(() => {
+          // Ignore if file doesn't exist or isn't valid
+        });
+    });
+
     function secretSantaDraw(arr) {
       // Simple shuffle-based draw with no self-assignments
       let givers = arr.slice();
       let receivers = arr.slice();
       let valid = false, result = [];
       while (!valid && arr.length > 1) {
-        // Fisher-Yates shuffle
         for (let i = receivers.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
