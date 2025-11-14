@@ -82,6 +82,7 @@
       <label for="nameInput">Add Participant</label>
       <input type="text" id="nameInput" placeholder="Enter name">
       <button type="submit">Add</button>
+      <button type="button" id="sortBtn" style="margin-left:0.5rem;">Sort Alphabetically</button>
     </form>
     <ul id="nameList"></ul>
     <button id="drawBtn" style="margin-top:1rem; width:100%;">Draw Names</button>
@@ -93,6 +94,7 @@
     const nameForm = document.getElementById('nameForm');
     const nameList = document.getElementById('nameList');
     const drawBtn = document.getElementById('drawBtn');
+    const sortBtn = document.getElementById('sortBtn');
     const resultDiv = document.getElementById('result');
 
     function updateNameList() {
@@ -119,6 +121,11 @@
         nameInput.value = '';
         updateNameList();
       }
+    };
+
+    sortBtn.onclick = function() {
+      names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      updateNameList();
     };
 
     function secretSantaDraw(arr) {
