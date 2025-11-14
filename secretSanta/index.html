@@ -2,243 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Secret Santa Organizer</title>
+  <title>Secret Santa — Private Reveal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {
-      background: #1a1a2e;
-      color: #f5f6fa;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      padding: 2rem;
-      min-height: 100vh;
-    }
-    h1 {
-      color: #e84118;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .card {
-      background: #23234b;
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      padding: 2rem;
-      max-width: 520px;
-      margin: 0 auto;
-      position: relative;
-    }
-    #statusMsg {
-      min-height: 24px;
-      text-align: center;
-      background: #393979;
-      color: #ffd32a;
-      font-weight: bold;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      display: none;
-      opacity: 1;
-      transition: opacity 0.5s;
-    }
-    label {
-      display: block;
-      margin: 1rem 0 0.5rem 0;
-      color: #ffd32a;
-    }
-    .field-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-    input, button {
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      border: none;
-      margin-bottom: 1rem;
-    }
-    input {
-      background: #393979;
-      color: #fff;
-      width: 100%;
-    }
-    .field-row input {
-      margin-right: 0;
-    }
-    button {
-      background: #e84118;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-right: 0.5rem;
-    }
-    button:hover {
-      background: #ffd32a;
-      color: #23234b;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    .name-item {
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-    .pair-list {
-      margin-top: 1.5rem;
-      background: #23234b;
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .person-info {
-      display: inline-block;
-      min-width: 120px;
-    }
-    .label-small {
-      color: #888;
-      font-size: 0.9em;
-      margin-left: 0.3em;
-      font-weight: normal;
-    }
-    @media (max-width: 600px) {
-      .card { padding: 1rem; }
-      .field-row { flex-direction: column; gap: 0.2rem; }
-    }
+    body { background: #1a1a2e; color: #f5f6fa; font-family: Arial, sans-serif; padding: 2rem; }
+    h1 { color: #e84118; text-align: center; margin-bottom: 2rem; }
+    .card { background: #23234b; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 2rem; max-width: 400px; margin: 0 auto; }
+    label { color: #ffd32a; display: block; margin-bottom: 0.5rem;}
+    input, button { padding: 0.5rem 1rem; border-radius: 6px; border: none; margin-bottom: 1rem; }
+    input { width: calc(100% - 1rem); background: #393979; color: #fff; }
+    button { background: #e84118; color: white; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #ffd32a; color: #23234b; }
+    .status { min-height: 24px; text-align: center; color: #ffd32a; margin-bottom: 1rem; }
+    #result { text-align: center; }
+    #result h3 { color: #ffd32a; }
   </style>
 </head>
 <body>
-  <h1>Secret Santa Organizer 🎁</h1>
+  <h1>Secret Santa 🎁</h1>
   <div class="card">
-    <div id="statusMsg"></div>
-    <form id="nameForm" autocomplete="off">
-      <label for="nameInput">Add Participant</label>
-      <div class="field-row">
-        <input type="text" id="nameInput" placeholder="Enter name">
-        <input type="text" id="familyInput" placeholder="Family ID">
-      </div>
-      <button type="submit">Add</button>
-      <button type="button" id="sortBtn" style="margin-left:0.3rem;">Sort Alphabetically</button>
+    <div class="status" id="status"></div>
+    <form id="loginForm" autocomplete="off">
+      <label for="username">Enter your name:</label>
+      <input type="text" id="username" placeholder="Your name (e.g. Alysha)">
+      <button type="submit">Reveal My Giftee</button>
     </form>
-    <ul id="nameList"></ul>
-    <button id="drawBtn" style="margin-top:1rem; width:100%;">Draw Names</button>
-    <div class="pair-list" id="result" style="display:none;"></div>
+    <div id="result" style="display:none;">
+      <!-- Will show assignment here -->
+    </div>
   </div>
   <script>
-    const names = [];
-    const nameInput = document.getElementById('nameInput');
-    const familyInput = document.getElementById('familyInput');
-    const nameForm = document.getElementById('nameForm');
-    const nameList = document.getElementById('nameList');
-    const drawBtn = document.getElementById('drawBtn');
-    const sortBtn = document.getElementById('sortBtn');
+    // Replace these assignments with your family’s draw results. Names (keys) should be lowercase!
+    const assignments = {
+      "alysha": "Kevin",
+      "asif": "Vinod",
+      "ayden": "Nila",
+      "chinnu": "Jean",
+      "henri": "Neethu",
+      "jean": "Viaan",
+      "kenny": "Alysha",
+      "kevin": "Chinnu",
+      "neethu": "Henri",
+      "nehna": "Kenny",
+      "nila": "Ayden",
+      "viaan": "Vijay",
+      "vijay": "Asif",
+      "vinod": "Nehna"
+      // Make sure every participant has an entry and recipient!
+    };
+
+    const loginForm = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
     const resultDiv = document.getElementById('result');
-    const statusMsg = document.getElementById('statusMsg');
+    const statusDiv = document.getElementById('status');
 
-    function showStatus(msg) {
-      statusMsg.textContent = msg;
-      statusMsg.style.display = 'block';
-      statusMsg.style.opacity = 1;
-      setTimeout(() => {
-        statusMsg.style.opacity = 0;
-        setTimeout(() => { statusMsg.style.display = 'none'; }, 500);
-      }, 2500);
-    }
-
-    function updateNameList() {
-      nameList.innerHTML = '';
-      names.forEach((person, idx) => {
-        const li = document.createElement('li');
-        li.className = 'name-item';
-        li.innerHTML = `<span class="person-info">${person.name} <span class="label-small">(Family: ${person.family})</span></span>
-          <button onclick="removeName(${idx})" aria-label="Delete ${person.name}">Delete</button>`;
-        nameList.appendChild(li);
-      });
-    }
-
-    window.removeName = function(idx) {
-      names.splice(idx, 1);
-      updateNameList();
-    };
-
-    nameForm.onsubmit = function(e) {
+    loginForm.onsubmit = function(e) {
       e.preventDefault();
-      const val = nameInput.value.trim();
-      const fam = familyInput.value.trim();
-      if (val.length > 0 && fam.length > 0 && !names.some(n => n.name === val)) {
-        names.push({ name: val, family: fam });
-        nameInput.value = '';
-        familyInput.value = '';
-        updateNameList();
+      const uname = usernameInput.value.trim().toLowerCase();
+      if (!uname) {
+        statusDiv.textContent = "Enter your name to log in!";
+        resultDiv.style.display = "none";
+        return;
       }
-    };
-
-    sortBtn.onclick = function() {
-      names.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-      updateNameList();
-    };
-
-    // Auto-load list.json if present on server
-    window.addEventListener('DOMContentLoaded', function() {
-      fetch('list.json')
-        .then(response => {
-          if (!response.ok) throw new Error('No list.json found');
-          return response.json();
-        })
-        .then(loaded => {
-          if (Array.isArray(loaded) && loaded.every(x => x.name && x.family)) {
-            names.length = 0;
-            loaded.forEach(person => names.push({ name: person.name, family: person.family }));
-            updateNameList();
-            showStatus('Loaded participants from list.json');
-          }
-        })
-        .catch(() => {
-          // No file present or error reading, do nothing
-        });
-    });
-
-    function secretSantaDraw(arr) {
-      // Exclude assignments within the same family
-      let givers = arr.slice();
-      let receivers = arr.slice();
-      let valid = false, result = [];
-      let attempts = 0;
-      while (!valid && arr.length > 1 && attempts < 2000) {
-        attempts++;
-        // Shuffle receivers
-        for (let i = receivers.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
-        }
-        valid = givers.every((g, i) => g.name !== receivers[i].name && g.family !== receivers[i].family);
-        if (valid) {
-          result = givers.map((g, i) => ({giver: g.name, receiver: receivers[i].name}));
-        }
+      if (assignments.hasOwnProperty(uname)) {
+        const giftee = assignments[uname];
+        statusDiv.textContent = "";
+        resultDiv.innerHTML = `<h3>Your Secret Santa Giftee is:</h3><p style="font-size:1.5em;"><b>${giftee}</b></p>`;
+        resultDiv.style.display = "block";
+      } else {
+        statusDiv.textContent = "Name not found. Please check spelling or ask the organizer.";
+        resultDiv.style.display = "none";
       }
-      return result;
     }
-
-    drawBtn.onclick = function() {
-      if (names.length < 2) {
-        alert('Enter at least 2 participants.');
-        return;
-      }
-      const pairs = secretSantaDraw(names);
-      if (!pairs.length) {
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<b>No valid match found. Try again or check family assignments!</b>';
-        return;
-      }
-      resultDiv.style.display = 'block';
-      resultDiv.innerHTML = `<h3>Secret Santa Pairings</h3><ul>${
-        pairs.map(p => `<li><b>${p.giver}</b> gives a gift to <b>${p.receiver}</b></li>`).join('')
-      }</ul>`;
-    };
-
-    updateNameList();
   </script>
 </body>
 </html>
