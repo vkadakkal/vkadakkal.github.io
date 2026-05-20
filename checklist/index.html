@@ -459,7 +459,7 @@ tbody td:last-child { text-align: center; }
 
     <div class="form-group">
       <label for="apiUrlInput">SheetDB API URL</label>
-      <input type="url" id="apiUrlInput" placeholder="https://sheetdb.io/api/v1/bu1qdo31doqhu" autocomplete="off" spellcheck="false">
+      <input type="url" id="apiUrlInput" placeholder="https://sheetdb.io/api/v1/xxxxxxxxxx" autocomplete="off" spellcheck="false">
       <p class="form-note">
         1. Open <a href="https://sheetdb.io" target="_blank" rel="noopener">sheetdb.io</a> → New API → paste your Google Sheet URL.<br>
         2. Your Google Sheet needs columns: <strong>status</strong>, <strong>assignee</strong>, <strong>task</strong>.<br>
@@ -529,15 +529,14 @@ tbody td:last-child { text-align: center; }
 
 <script>
 // ─── State ───────────────────────────────────────────
-let API_URL = '';
-let LIST_TITLE = 'Tasks';
+let API_URL = 'https://sheetdb.io/api/v1/bu1qdo31doqhu';
+let LIST_TITLE = 'Shared Task List';
 let tasks = [];       // { id, status, assignee, task }
 let saveQueue = {};   // rowId → debounce timer
 let isSaving = false;
 
 // ─── Init ─────────────────────────────────────────────
 (function init() {
-  // Theme toggle
   const toggle = document.getElementById('themeToggle');
   let theme = 'dark';
   document.documentElement.setAttribute('data-theme', theme);
@@ -549,25 +548,24 @@ let isSaving = false;
       : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
   });
 
-  // Load saved config from URL hash (shareable!)
   const hash = window.location.hash.slice(1);
   if (hash) {
     try {
       const cfg = JSON.parse(atob(hash));
       if (cfg.api) {
         API_URL = cfg.api;
-        LIST_TITLE = cfg.title || 'Tasks';
-        document.getElementById('apiUrlInput').value = API_URL;
-        document.getElementById('titleInput').value = LIST_TITLE;
-        document.getElementById('setupView').style.display = 'none';
-        document.getElementById('appView').style.display = '';
-        document.getElementById('syncBtn').style.display = '';
-        document.getElementById('listTitle').textContent = LIST_TITLE;
-        loadTasks();
-        return;
+        LIST_TITLE = cfg.title || 'Shared Task List';
       }
     } catch(e) {}
   }
+
+  document.getElementById('apiUrlInput').value = API_URL;
+  document.getElementById('titleInput').value = LIST_TITLE;
+  document.getElementById('setupView').style.display = 'none';
+  document.getElementById('appView').style.display = '';
+  document.getElementById('syncBtn').style.display = '';
+  document.getElementById('listTitle').textContent = LIST_TITLE;
+  loadTasks();
 })();
 
 // ─── Config ──────────────────────────────────────────
