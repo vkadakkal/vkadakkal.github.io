@@ -446,7 +446,7 @@ tbody td:last-child { text-align: center; }
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- ─── Setup Panel ─────────────────────────────────── -->
-<div class="main-content" id="setupView">
+<div class="main-content" id="setupView" style="display:none">
   <div class="setup-panel">
     <div class="setup-logo">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -479,7 +479,7 @@ tbody td:last-child { text-align: center; }
 </div>
 
 <!-- ─── Task App View ─────────────────────────────────── -->
-<div class="main-content" id="appView" style="display:none">
+<div class="main-content" id="appView">
 
   <div class="toolbar">
     <div class="toolbar-left">
@@ -570,18 +570,8 @@ let isSaving = false;
 
 // ─── Config ──────────────────────────────────────────
 function saveConfig() {
-  const url = document.getElementById('apiUrlInput').value.trim();
-  const title = document.getElementById('titleInput').value.trim() || 'Tasks';
-  if (!url) { toast('Please enter your SheetDB API URL', 'error'); return; }
-  if (!url.includes('sheetdb.io')) { toast('URL should be from sheetdb.io', 'error'); return; }
-
-  API_URL = url.replace(/\/$/, '');
-  LIST_TITLE = title;
-
-  // Save config in URL hash so it's shareable
-  const encoded = btoa(JSON.stringify({ api: API_URL, title: LIST_TITLE }));
-  window.location.hash = encoded;
-
+  API_URL = 'https://sheetdb.io/api/v1/bu1qdo31doqhu';
+  LIST_TITLE = document.getElementById('titleInput').value.trim() || 'Shared Task List';
   document.getElementById('setupView').style.display = 'none';
   document.getElementById('appView').style.display = '';
   document.getElementById('syncBtn').style.display = '';
@@ -590,8 +580,7 @@ function saveConfig() {
 }
 
 function showSetup() {
-  document.getElementById('setupView').style.display = '';
-  document.getElementById('appView').style.display = 'none';
+  toast('This app is locked to the configured shared sheet.', 'default');
 }
 
 // ─── Load Tasks from SheetDB ──────────────────────────
