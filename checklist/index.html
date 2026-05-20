@@ -395,6 +395,7 @@
       </div>
       <div class="brand-text">
         <h1>Shared Task List</h1>
+        <p>Google Sheets + SheetDB</p>
       </div>
     </div>
     <div class="header-actions">
@@ -409,6 +410,13 @@
   </header>
 
   <main class="container">
+    <section class="hero">
+      <div class="hero-card">
+        <h2 class="hero-title">Fast shared checklist for phone and desktop</h2>
+        <p class="hero-subtitle">This version is rebuilt to use a simpler SheetDB flow: load rows, add rows, update rows by unique key, and delete rows by that same key.</p>
+      </div>
+    </section>
+
     <section class="toolbar" aria-label="Task controls">
       <div class="toolbar-left">
         <div class="search-shell">
@@ -442,7 +450,7 @@
               <th style="width: 170px;">Status</th>
               <th style="width: 180px;">Assignee</th>
               <th>Task</th>
-              <th style="width: 84px;">Action</th>
+              <th style="width: 84px;">Del</th>
             </tr>
           </thead>
           <tbody id="taskBody"></tbody>
@@ -668,7 +676,7 @@
           <td>
             <div class="row-actions">
               <button class="delete-btn" type="button" data-role="delete" data-id="${escapeHtml(task.id)}" aria-label="Delete task">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
               </button>
             </div>
           </td>
