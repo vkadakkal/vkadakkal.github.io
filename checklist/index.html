@@ -93,6 +93,7 @@ body {
   background: var(--color-bg);
   min-height: 100dvh;
   line-height: 1.5;
+  padding-bottom: 56px;
 }
 button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
 input, select { font: inherit; color: inherit; }
@@ -409,6 +410,90 @@ tbody td:last-child { text-align: center; }
   .toast { max-width: 100%; }
 }
 
+
+
+.status-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: color-mix(in oklch, var(--color-surface) 88%, black 12%);
+  border-top: 1px solid var(--color-divider);
+  box-shadow: 0 -8px 24px oklch(0 0 0 / 0.18);
+  backdrop-filter: blur(10px);
+}
+.status-footer-left, .status-footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.status-pill strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+  box-shadow: 0 0 0 2px color-mix(in oklch, currentColor 12%, transparent);
+  flex-shrink: 0;
+}
+.status-led.ok { background: var(--color-success); color: var(--color-success); }
+.status-led.warn { background: var(--color-warning); color: var(--color-warning); }
+.status-led.err { background: var(--color-error); color: var(--color-error); }
+.status-led.busy {
+  background: var(--color-primary);
+  color: var(--color-primary);
+  animation: pulseLed 1.2s ease-in-out infinite;
+}
+.status-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 42vw;
+}
+.status-text strong { color: var(--color-text); }
+@keyframes pulseLed {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.92); }
+}
+@media (max-width: 640px) {
+  body { padding-bottom: 62px; }
+  .status-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+  .status-footer-left, .status-footer-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .status-text { max-width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -534,9 +619,11 @@ let LIST_TITLE = 'Shared Task List';
 let tasks = [];       // { rowIndex, status, assignee, task }
 let saveQueue = {};   // rowIndex → debounce timer
 let isSaving = false;
+let pendingSaves = 0;
+let lastLoadOk = false;
 
 // ─── Init ─────────────────────────────────────────────
-(function init() {
+window.addEventListener('DOMContentLoaded', () => {
   const toggle = document.getElementById('themeToggle');
   let theme = 'dark';
   document.documentElement.setAttribute('data-theme', theme);
@@ -566,7 +653,26 @@ let isSaving = false;
   document.getElementById('syncBtn').style.display = '';
   document.getElementById('listTitle').textContent = LIST_TITLE;
   loadTasks();
-})();
+});
+
+
+function setConnectionState(state, label) {
+  const led = document.getElementById('connectionLed');
+  const text = document.getElementById('connectionLabel');
+  if (!led || !text) return;
+  led.className = 'status-led ' + state;
+  text.textContent = label;
+}
+
+function setSaveState(message) {
+  const el = document.getElementById('saveState');
+  if (el) el.innerHTML = message;
+}
+
+function setLoadedCount(count) {
+  const el = document.getElementById('loadedCount');
+  if (el) el.textContent = String(count);
+}
 
 // ─── Config ──────────────────────────────────────────
 function saveConfig() {
@@ -587,20 +693,33 @@ function showSetup() {
 async function loadTasks() {
   const tbody = document.getElementById('taskBody');
   tbody.innerHTML = buildSkeletons(5);
+  setConnectionState('busy', 'Loading…');
+  setSaveState('Checking SheetDB connection…');
   try {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    tasks = data.map((row, i) => ({
+    tasks = Array.isArray(data) ? data.map((row, i) => ({
       rowIndex: i,
       status: row.status || 'Not Started',
       assignee: row.assignee || '',
       task: row.task || ''
-    }));
+    })) : [];
+    lastLoadOk = true;
+    setConnectionState('ok', tasks.length ? 'SheetDB connected' : 'Connected, no rows yet');
+    setLoadedCount(tasks.length);
+    setSaveState(tasks.length
+      ? 'Loaded <strong>' + tasks.length + '</strong> tasks successfully.'
+      : 'Connected to SheetDB. The sheet is empty, so <strong>0</strong> rows are loaded.');
     renderTasks();
   } catch(e) {
     tbody.innerHTML = '';
-    toast('Failed to load tasks: ' + e.message, 'error');
+    lastLoadOk = false;
+    const msg = e && e.message ? e.message : 'Unknown error';
+    setConnectionState('err', 'Load failed');
+    setLoadedCount(0);
+    setSaveState('Load failed: <strong>' + msg + '</strong>. Check browser console/network for CORS or script errors.');
+    toast('Failed to load tasks: ' + msg, 'error');
   }
 }
 
@@ -697,6 +816,7 @@ async function addRow() {
   const btn = document.querySelector('.toolbar-right .btn-primary');
   const oldHtml = btn ? btn.innerHTML : '';
   const newTask = { status: 'Not Started', assignee: '', task: 'New task' };
+  setSaveState('Trying to add a new task…');
   try {
     if (btn) btn.innerHTML = '<span class="spinner"></span><span>Adding…</span>';
 
@@ -715,11 +835,12 @@ async function addRow() {
     }
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSaveState('New task created. Refreshing list…');
     toast('Task added', 'success');
     await loadTasks();
   } catch(e) {
-    tasks.unshift({ rowIndex: 0, status: 'Not Started', assignee: '', task: 'New task' });
-    renderTasks();
+    setConnectionState('warn', lastLoadOk ? 'Read-only or write blocked' : 'Connection issue');
+    setSaveState('Add failed: <strong>' + e.message + '</strong>. Check SheetDB write access or sheet structure.');
     toast('Add request failed; check SheetDB permissions or sheet structure', 'error');
   } finally {
     if (btn) btn.innerHTML = oldHtml;
@@ -729,15 +850,19 @@ async function addRow() {
 // ─── Delete Row ───────────────────────────────────────
 async function deleteRow(rowIndex) {
   const tr = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
+  setSaveState('Deleting row ' + (rowIndex + 2) + '…');
   if (tr) tr.style.opacity = '0.4';
   try {
     const rowNumber = rowIndex + 2;
     const res = await fetch(`${API_URL}/${rowNumber}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSaveState('Task deleted. Refreshing list…');
     await loadTasks();
     toast('Task deleted', 'success');
   } catch(e) {
     if (tr) tr.style.opacity = '';
+    setConnectionState('warn', lastLoadOk ? 'Connected, delete failed' : 'Connection issue');
+    setSaveState('Delete failed on row <strong>' + (rowIndex + 2) + '</strong>: ' + e.message);
     toast('Failed to delete: ' + e.message, 'error');
   }
 }
@@ -764,6 +889,7 @@ function onFieldChange(input, rowIndex, field) {
 
 // ─── Debounced Save ───────────────────────────────────
 function debounceSave(rowIndex, patch) {
+  setSaveState('Changes queued to save…');
   if (saveQueue[rowIndex]) clearTimeout(saveQueue[rowIndex].timer);
   if (!saveQueue[rowIndex]) saveQueue[rowIndex] = { patch: {} };
   Object.assign(saveQueue[rowIndex].patch, patch);
@@ -775,6 +901,9 @@ function debounceSave(rowIndex, patch) {
 }
 
 async function patchRow(rowIndex, patch) {
+  pendingSaves += 1;
+  setConnectionState('busy', 'Saving…');
+  setSaveState('Saving row ' + (rowIndex + 2) + '…');
   try {
     const rowNumber = rowIndex + 2;
     const res = await fetch(`${API_URL}/${rowNumber}`, {
@@ -783,8 +912,16 @@ async function patchRow(rowIndex, patch) {
       body: JSON.stringify(patch)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSaveState('Saved row <strong>' + (rowIndex + 2) + '</strong> successfully.');
   } catch(e) {
+    setConnectionState('warn', lastLoadOk ? 'Connected, save failed' : 'Connection issue');
+    setSaveState('Save failed on row <strong>' + (rowIndex + 2) + '</strong>: ' + e.message);
     toast('Save failed: ' + e.message, 'error');
+  } finally {
+    pendingSaves = Math.max(0, pendingSaves - 1);
+    if (pendingSaves === 0) {
+      setConnectionState(lastLoadOk ? 'ok' : 'warn', lastLoadOk ? 'SheetDB connected' : 'Needs attention');
+    }
   }
 }
 
@@ -803,5 +940,23 @@ function toast(msg, type = 'default') {
   setTimeout(() => el.remove(), 3500);
 }
 </script>
+
+
+<footer class="status-footer" aria-live="polite">
+  <div class="status-footer-left">
+    <div class="status-pill">
+      <span id="connectionLed" class="status-led busy"></span>
+      <span id="connectionLabel">Connecting…</span>
+    </div>
+    <div class="status-pill">
+      <strong id="loadedCount">0</strong>
+      <span>loaded</span>
+    </div>
+  </div>
+  <div class="status-footer-right">
+    <div id="saveState" class="status-text">Starting up…</div>
+  </div>
+</footer>
+
 </body>
 </html>
