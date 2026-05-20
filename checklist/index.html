@@ -623,8 +623,9 @@ let pendingSaves = 0;
 let lastLoadOk = false;
 
 // ─── Init ─────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   const toggle = document.getElementById('themeToggle');
+  if (!toggle) return false;
   let theme = 'dark';
   document.documentElement.setAttribute('data-theme', theme);
   toggle.addEventListener('click', () => {
@@ -646,317 +647,29 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch(e) {}
   }
 
-  document.getElementById('apiUrlInput').value = API_URL;
-  document.getElementById('titleInput').value = LIST_TITLE;
-  document.getElementById('setupView').style.display = 'none';
-  document.getElementById('appView').style.display = '';
-  document.getElementById('syncBtn').style.display = '';
-  document.getElementById('listTitle').textContent = LIST_TITLE;
+  const apiInput = document.getElementById('apiUrlInput');
+  const titleInput = document.getElementById('titleInput');
+  if (apiInput) apiInput.value = API_URL;
+  if (titleInput) titleInput.value = LIST_TITLE;
+  const setupView = document.getElementById('setupView');
+  const appView = document.getElementById('appView');
+  const syncBtn = document.getElementById('syncBtn');
+  const titleEl = document.getElementById('listTitle');
+  if (setupView) setupView.style.display = 'none';
+  if (appView) appView.style.display = '';
+  if (syncBtn) syncBtn.style.display = '';
+  if (titleEl) titleEl.textContent = LIST_TITLE;
+  setConnectionState('busy', 'Connecting…');
+  setLoadedCount(0);
+  setSaveState('App loaded. Contacting SheetDB…');
   loadTasks();
-});
-
-
-function setConnectionState(state, label) {
-  const led = document.getElementById('connectionLed');
-  const text = document.getElementById('connectionLabel');
-  if (!led || !text) return;
-  led.className = 'status-led ' + state;
-  text.textContent = label;
+  return true;
 }
 
-function setSaveState(message) {
-  const el = document.getElementById('saveState');
-  if (el) el.innerHTML = message;
+if (!initApp()) {
+  window.addEventListener('DOMContentLoaded', initApp, { once: true });
+  window.addEventListener('load', initApp, { once: true });
+  setTimeout(initApp, 250);
 }
 
-function setLoadedCount(count) {
-  const el = document.getElementById('loadedCount');
-  if (el) el.textContent = String(count);
-}
-
-// ─── Config ──────────────────────────────────────────
-function saveConfig() {
-  API_URL = 'https://sheetdb.io/api/v1/bu1qdo31doqhu';
-  LIST_TITLE = document.getElementById('titleInput').value.trim() || 'Shared Task List';
-  document.getElementById('setupView').style.display = 'none';
-  document.getElementById('appView').style.display = '';
-  document.getElementById('syncBtn').style.display = '';
-  document.getElementById('listTitle').textContent = LIST_TITLE;
-  loadTasks();
-}
-
-function showSetup() {
-  toast('This app is locked to the configured shared sheet.', 'default');
-}
-
-// ─── Load Tasks from SheetDB ──────────────────────────
-async function loadTasks() {
-  const tbody = document.getElementById('taskBody');
-  tbody.innerHTML = buildSkeletons(5);
-  setConnectionState('busy', 'Loading…');
-  setSaveState('Checking SheetDB connection…');
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    tasks = Array.isArray(data) ? data.map((row, i) => ({
-      rowIndex: i,
-      status: row.status || 'Not Started',
-      assignee: row.assignee || '',
-      task: row.task || ''
-    })) : [];
-    lastLoadOk = true;
-    setConnectionState('ok', tasks.length ? 'SheetDB connected' : 'Connected, no rows yet');
-    setLoadedCount(tasks.length);
-    setSaveState(tasks.length
-      ? 'Loaded <strong>' + tasks.length + '</strong> tasks successfully.'
-      : 'Connected to SheetDB. The sheet is empty, so <strong>0</strong> rows are loaded.');
-    renderTasks();
-  } catch(e) {
-    tbody.innerHTML = '';
-    lastLoadOk = false;
-    const msg = e && e.message ? e.message : 'Unknown error';
-    setConnectionState('err', 'Load failed');
-    setLoadedCount(0);
-    setSaveState('Load failed: <strong>' + msg + '</strong>. Check browser console/network for CORS or script errors.');
-    toast('Failed to load tasks: ' + msg, 'error');
-  }
-}
-
-function buildSkeletons(n) {
-  return Array.from({length: n}, () => `
-    <tr>
-      <td><div class="skeleton" style="width:100px;height:24px;border-radius:999px"></div></td>
-      <td><div class="skeleton" style="width:120px"></div></td>
-      <td><div class="skeleton" style="width:70%;max-width:400px"></div></td>
-      <td></td>
-    </tr>`).join('');
-}
-
-// ─── Render ───────────────────────────────────────────
-function renderTasks() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const fs = document.getElementById('filterStatus').value;
-
-  const filtered = tasks.filter(t => {
-    const matchSearch = !q || t.task.toLowerCase().includes(q) || t.assignee.toLowerCase().includes(q);
-    const matchStatus = !fs || t.status === fs;
-    return matchSearch && matchStatus;
-  });
-
-  const tbody = document.getElementById('taskBody');
-  const empty = document.getElementById('emptyState');
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-  } else {
-    empty.style.display = 'none';
-    tbody.innerHTML = filtered.map(t => buildRow(t)).join('');
-  }
-
-  renderStats();
-}
-
-function statusClass(s) {
-  if (s === 'In Progress') return 'status-ip';
-  if (s === 'Complete') return 'status-done';
-  return 'status-ns';
-}
-
-function buildRow(t) {
-  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const isDone = t.status === 'Complete';
-  return `
-  <tr data-row-index="${t.rowIndex}" class="${isDone ? 'is-complete' : ''}">`
-    <td>
-      <select class="status-select ${statusClass(t.status)}"
-              onchange="onStatusChange(this, ${t.rowIndex})"
-              aria-label="Status">
-        <option ${t.status==='Not Started'?'selected':''}>Not Started</option>
-        <option ${t.status==='In Progress'?'selected':''}>In Progress</option>
-        <option ${t.status==='Complete'?'selected':''}>Complete</option>
-      </select>
-    </td>
-    <td>
-      <input class="editable" type="text" value="${esc(t.assignee)}"
-             placeholder="Assignee…"
-             oninput="onFieldChange(this, ${t.rowIndex}, 'assignee')"
-             aria-label="Assignee">
-    </td>
-    <td>
-      <input class="editable" type="text" value="${esc(t.task)}"
-             placeholder="Describe task…"
-             oninput="onFieldChange(this, ${t.rowIndex}, 'task')"
-             aria-label="Task">
-    </td>
-    <td>
-      <button class="btn-delete" onclick="deleteRow(${t.rowIndex})" aria-label="Delete task" title="Delete">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-      </button>
-    </td>
-  </tr>`;
-}
-
-// ─── Stats ────────────────────────────────────────────
-function renderStats() {
-  const ns   = tasks.filter(t => t.status === 'Not Started').length;
-  const ip   = tasks.filter(t => t.status === 'In Progress').length;
-  const done = tasks.filter(t => t.status === 'Complete').length;
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat-chip"><div class="dot dot-ns"></div><span>Not Started</span><strong>${ns}</strong></div>
-    <div class="stat-chip"><div class="dot dot-ip"></div><span>In Progress</span><strong>${ip}</strong></div>
-    <div class="stat-chip"><div class="dot dot-done"></div><span>Complete</span><strong>${done}</strong></div>
-    <div class="stat-chip"><span>Total</span><strong>${tasks.length}</strong></div>
-  `;
-}
-
-// ─── Add Row ──────────────────────────────────────────
-async function addRow() {
-  const btn = document.querySelector('.toolbar-right .btn-primary');
-  const oldHtml = btn ? btn.innerHTML : '';
-  const newTask = { status: 'Not Started', assignee: '', task: 'New task' };
-  setSaveState('Trying to add a new task…');
-  try {
-    if (btn) btn.innerHTML = '<span class="spinner"></span><span>Adding…</span>';
-
-    let res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: [newTask] })
-    });
-
-    if (!res.ok) {
-      res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask)
-      });
-    }
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setSaveState('New task created. Refreshing list…');
-    toast('Task added', 'success');
-    await loadTasks();
-  } catch(e) {
-    setConnectionState('warn', lastLoadOk ? 'Read-only or write blocked' : 'Connection issue');
-    setSaveState('Add failed: <strong>' + e.message + '</strong>. Check SheetDB write access or sheet structure.');
-    toast('Add request failed; check SheetDB permissions or sheet structure', 'error');
-  } finally {
-    if (btn) btn.innerHTML = oldHtml;
-  }
-}
-
-// ─── Delete Row ───────────────────────────────────────
-async function deleteRow(rowIndex) {
-  const tr = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
-  setSaveState('Deleting row ' + (rowIndex + 2) + '…');
-  if (tr) tr.style.opacity = '0.4';
-  try {
-    const rowNumber = rowIndex + 2;
-    const res = await fetch(`${API_URL}/${rowNumber}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setSaveState('Task deleted. Refreshing list…');
-    await loadTasks();
-    toast('Task deleted', 'success');
-  } catch(e) {
-    if (tr) tr.style.opacity = '';
-    setConnectionState('warn', lastLoadOk ? 'Connected, delete failed' : 'Connection issue');
-    setSaveState('Delete failed on row <strong>' + (rowIndex + 2) + '</strong>: ' + e.message);
-    toast('Failed to delete: ' + e.message, 'error');
-  }
-}
-
-// ─── Edit Status ──────────────────────────────────────
-function onStatusChange(sel, rowIndex) {
-  const t = tasks.find(t => t.rowIndex === rowIndex);
-  if (!t) return;
-  t.status = sel.value;
-  sel.className = 'status-select ' + statusClass(t.status);
-  const tr = sel.closest('tr');
-  if (tr) tr.className = t.status === 'Complete' ? 'is-complete' : '';
-  renderStats();
-  debounceSave(rowIndex, { status: t.status });
-}
-
-// ─── Edit Field ───────────────────────────────────────
-function onFieldChange(input, rowIndex, field) {
-  const t = tasks.find(t => t.rowIndex === rowIndex);
-  if (!t) return;
-  t[field] = input.value;
-  debounceSave(rowIndex, { [field]: input.value });
-}
-
-// ─── Debounced Save ───────────────────────────────────
-function debounceSave(rowIndex, patch) {
-  setSaveState('Changes queued to save…');
-  if (saveQueue[rowIndex]) clearTimeout(saveQueue[rowIndex].timer);
-  if (!saveQueue[rowIndex]) saveQueue[rowIndex] = { patch: {} };
-  Object.assign(saveQueue[rowIndex].patch, patch);
-  saveQueue[rowIndex].timer = setTimeout(() => {
-    const p = saveQueue[rowIndex].patch;
-    delete saveQueue[rowIndex];
-    patchRow(rowIndex, p);
-  }, 900);
-}
-
-async function patchRow(rowIndex, patch) {
-  pendingSaves += 1;
-  setConnectionState('busy', 'Saving…');
-  setSaveState('Saving row ' + (rowIndex + 2) + '…');
-  try {
-    const rowNumber = rowIndex + 2;
-    const res = await fetch(`${API_URL}/${rowNumber}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setSaveState('Saved row <strong>' + (rowIndex + 2) + '</strong> successfully.');
-  } catch(e) {
-    setConnectionState('warn', lastLoadOk ? 'Connected, save failed' : 'Connection issue');
-    setSaveState('Save failed on row <strong>' + (rowIndex + 2) + '</strong>: ' + e.message);
-    toast('Save failed: ' + e.message, 'error');
-  } finally {
-    pendingSaves = Math.max(0, pendingSaves - 1);
-    if (pendingSaves === 0) {
-      setConnectionState(lastLoadOk ? 'ok' : 'warn', lastLoadOk ? 'SheetDB connected' : 'Needs attention');
-    }
-  }
-}
-
-// ─── Toast ────────────────────────────────────────────
-function toast(msg, type = 'default') {
-  const c = document.getElementById('toastContainer');
-  const icons = {
-    success: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6daa45" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>`,
-    error:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e06464" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
-    default: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`
-  };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = (icons[type] || icons.default) + `<span>${msg}</span>`;
-  c.appendChild(el);
-  setTimeout(() => el.remove(), 3500);
-}
-</script>
-
-
-<footer class="status-footer" aria-live="polite">
-  <div class="status-footer-left">
-    <div class="status-pill">
-      <span id="connectionLed" class="status-led busy"></span>
-      <span id="connectionLabel">Connecting…</span>
-    </div>
-    <div class="status-pill">
-      <strong id="loadedCount">0</strong>
-      <span>loaded</span>
-    </div>
-  </div>
-  <div class="status-footer-right">
-    <div id="saveState" class="status-text">Starting up…</div>
-  </div>
-</footer>
-
-</body>
-</html>
+>
