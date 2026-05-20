@@ -694,18 +694,35 @@ function renderStats() {
 
 // ─── Add Row ──────────────────────────────────────────
 async function addRow() {
-  const newTask = { status: 'Not Started', assignee: '', task: '' };
+  const btn = document.querySelector('.toolbar-right .btn-primary');
+  const oldHtml = btn ? btn.innerHTML : '';
+  const newTask = { status: 'Not Started', assignee: '', task: 'New task' };
   try {
-    const res = await fetch(API_URL, {
+    if (btn) btn.innerHTML = '<span class="spinner"></span><span>Adding…</span>';
+
+    let res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: [newTask] })
     });
+
+    if (!res.ok) {
+      res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTask)
+      });
+    }
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     toast('Task added', 'success');
     await loadTasks();
   } catch(e) {
-    toast('Failed to add task: ' + e.message, 'error');
+    tasks.unshift({ rowIndex: 0, status: 'Not Started', assignee: '', task: 'New task' });
+    renderTasks();
+    toast('Add request failed; check SheetDB permissions or sheet structure', 'error');
+  } finally {
+    if (btn) btn.innerHTML = oldHtml;
   }
 }
 
