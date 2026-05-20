@@ -531,8 +531,8 @@ tbody td:last-child { text-align: center; }
 // ─── State ───────────────────────────────────────────
 let API_URL = 'https://sheetdb.io/api/v1/bu1qdo31doqhu';
 let LIST_TITLE = 'Shared Task List';
-let tasks = [];       // { id, status, assignee, task }
-let saveQueue = {};   // rowId → debounce timer
+let tasks = [];       // { rowIndex, status, assignee, task }
+let saveQueue = {};   // rowIndex → debounce timer
 let isSaving = false;
 
 // ─── Init ─────────────────────────────────────────────
@@ -603,7 +603,7 @@ async function loadTasks() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     tasks = data.map((row, i) => ({
-      id: row.id || String(i),
+      rowIndex: i,
       status: row.status || 'Not Started',
       assignee: row.assignee || '',
       task: row.task || ''
@@ -660,10 +660,10 @@ function buildRow(t) {
   const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const isDone = t.status === 'Complete';
   return `
-  <tr data-id="${esc(t.id)}" class="${isDone ? 'is-complete' : ''}">
+  <tr data-row-index="${t.rowIndex}" class="${isDone ? 'is-complete' : ''}">`
     <td>
       <select class="status-select ${statusClass(t.status)}"
-              onchange="onStatusChange(this, '${esc(t.id)}')"
+              onchange="onStatusChange(this, ${t.rowIndex})"
               aria-label="Status">
         <option ${t.status==='Not Started'?'selected':''}>Not Started</option>
         <option ${t.status==='In Progress'?'selected':''}>In Progress</option>
@@ -673,17 +673,17 @@ function buildRow(t) {
     <td>
       <input class="editable" type="text" value="${esc(t.assignee)}"
              placeholder="Assignee…"
-             oninput="onFieldChange(this, '${esc(t.id)}', 'assignee')"
+             oninput="onFieldChange(this, ${t.rowIndex}, 'assignee')"
              aria-label="Assignee">
     </td>
     <td>
       <input class="editable" type="text" value="${esc(t.task)}"
              placeholder="Describe task…"
-             oninput="onFieldChange(this, '${esc(t.id)}', 'task')"
+             oninput="onFieldChange(this, ${t.rowIndex}, 'task')"
              aria-label="Task">
     </td>
     <td>
-      <button class="btn-delete" onclick="deleteRow('${esc(t.id)}')" aria-label="Delete task" title="Delete">
+      <button class="btn-delete" onclick="deleteRow(${t.rowIndex})" aria-label="Delete task" title="Delete">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
       </button>
     </td>
@@ -721,14 +721,14 @@ async function addRow() {
 }
 
 // ─── Delete Row ───────────────────────────────────────
-async function deleteRow(id) {
-  const tr = document.querySelector(`tr[data-id="${id}"]`);
+async function deleteRow(rowIndex) {
+  const tr = document.querySelector(`tr[data-row-index="${rowIndex}"]`);
   if (tr) tr.style.opacity = '0.4';
   try {
-    const res = await fetch(`${API_URL}/id/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const rowNumber = rowIndex + 2;
+    const res = await fetch(`${API_URL}/${rowNumber}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    tasks = tasks.filter(t => t.id !== id);
-    renderTasks();
+    await loadTasks();
     toast('Task deleted', 'success');
   } catch(e) {
     if (tr) tr.style.opacity = '';
@@ -737,43 +737,44 @@ async function deleteRow(id) {
 }
 
 // ─── Edit Status ──────────────────────────────────────
-function onStatusChange(sel, id) {
-  const t = tasks.find(t => t.id === id);
+function onStatusChange(sel, rowIndex) {
+  const t = tasks.find(t => t.rowIndex === rowIndex);
   if (!t) return;
   t.status = sel.value;
   sel.className = 'status-select ' + statusClass(t.status);
   const tr = sel.closest('tr');
   if (tr) tr.className = t.status === 'Complete' ? 'is-complete' : '';
   renderStats();
-  debounceSave(id, { status: t.status });
+  debounceSave(rowIndex, { status: t.status });
 }
 
 // ─── Edit Field ───────────────────────────────────────
-function onFieldChange(input, id, field) {
-  const t = tasks.find(t => t.id === id);
+function onFieldChange(input, rowIndex, field) {
+  const t = tasks.find(t => t.rowIndex === rowIndex);
   if (!t) return;
   t[field] = input.value;
-  debounceSave(id, { [field]: input.value });
+  debounceSave(rowIndex, { [field]: input.value });
 }
 
 // ─── Debounced Save ───────────────────────────────────
-function debounceSave(id, patch) {
-  if (saveQueue[id]) clearTimeout(saveQueue[id].timer);
-  if (!saveQueue[id]) saveQueue[id] = { patch: {} };
-  Object.assign(saveQueue[id].patch, patch);
-  saveQueue[id].timer = setTimeout(() => {
-    const p = saveQueue[id].patch;
-    delete saveQueue[id];
-    patchRow(id, p);
+function debounceSave(rowIndex, patch) {
+  if (saveQueue[rowIndex]) clearTimeout(saveQueue[rowIndex].timer);
+  if (!saveQueue[rowIndex]) saveQueue[rowIndex] = { patch: {} };
+  Object.assign(saveQueue[rowIndex].patch, patch);
+  saveQueue[rowIndex].timer = setTimeout(() => {
+    const p = saveQueue[rowIndex].patch;
+    delete saveQueue[rowIndex];
+    patchRow(rowIndex, p);
   }, 900);
 }
 
-async function patchRow(id, patch) {
+async function patchRow(rowIndex, patch) {
   try {
-    const res = await fetch(`${API_URL}/id/${encodeURIComponent(id)}`, {
+    const rowNumber = rowIndex + 2;
+    const res = await fetch(`${API_URL}/${rowNumber}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: patch })
+      body: JSON.stringify(patch)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch(e) {
