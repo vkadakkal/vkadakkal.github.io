@@ -84,7 +84,7 @@
       background: radial-gradient(circle at top, rgba(79,152,163,.10), transparent 28%), var(--color-bg);
       padding-bottom: 64px;
     }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
     img, svg { display: block; }
     :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -142,18 +142,18 @@
     .container {
       width: min(1080px, calc(100% - 2rem));
       margin: 0 auto;
-      padding: var(--space-5) 0 var(--space-8);
+      padding: var(--space-4) 0 var(--space-6);
     }
 
     .hero {
       display: grid; gap: var(--space-4);
-      margin-bottom: var(--space-5);
+      margin-bottom: var(--space-3);
     }
     .hero-card {
       background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white 2%), var(--color-surface-2));
       border: 1px solid var(--color-border);
       border-radius: var(--radius-xl);
-      padding: var(--space-5);
+      padding: var(--space-4);
       box-shadow: var(--shadow-sm);
     }
     .hero-title {
@@ -221,13 +221,13 @@
     thead th {
       text-align: left; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .08em;
       color: var(--color-text-muted); font-weight: 600;
-      padding: .9rem 1rem;
+      padding: .65rem .75rem;
       background: var(--color-surface-2);
       border-bottom: 1px solid var(--color-divider);
       white-space: nowrap;
     }
     tbody td {
-      padding: .85rem 1rem;
+      padding: .45rem .55rem;
       border-bottom: 1px solid var(--color-divider);
       vertical-align: middle;
     }
@@ -235,14 +235,16 @@
     tbody tr.complete-row { opacity: .72; }
     tbody tr:hover td { background: color-mix(in srgb, var(--color-surface-2) 84%, transparent); }
 
+    textarea { resize: none; }
+
     .field-input, .status-select {
       width: 100%;
-      min-height: 2.4rem;
+      min-height: 2rem;
       border-radius: var(--radius-md);
       border: 1px solid transparent;
       background: transparent;
       color: var(--color-text);
-      padding: .5rem .7rem;
+      padding: .35rem .5rem;
       transition: border-color var(--transition), background var(--transition);
     }
     .field-input:hover, .status-select:hover { border-color: var(--color-border); background: var(--color-surface-2); }
@@ -261,7 +263,7 @@
       display: flex; justify-content: flex-end; gap: var(--space-2);
     }
     .delete-btn {
-      width: 2.2rem; height: 2.2rem; border-radius: .7rem;
+      width: 1.9rem; height: 1.9rem; border-radius: .7rem;
       border: 1px solid var(--color-border); background: transparent; color: var(--color-text-faint);
     }
     .delete-btn:hover { color: var(--color-error); background: var(--color-error-bg); border-color: color-mix(in srgb, var(--color-error) 35%, transparent); }
@@ -321,24 +323,60 @@
     }
 
     @media (max-width: 760px) {
-      .container { width: min(100% - 1rem, 760px); }
-      .toolbar { grid-template-columns: 1fr; }
+      .container { width: min(100% - .5rem, 760px); }
+      .hero-card { padding: var(--space-3); }
+      .toolbar { grid-template-columns: 1fr; gap: .5rem; }
+      .toolbar-left { gap: .5rem; }
       .toolbar-right { justify-content: stretch; }
       .toolbar-right .btn { width: 100%; }
       .search-shell input { width: 100%; }
-      table, thead, tbody, tr, td, th { display: block; }
-      thead { display: none; }
-      tbody { display: grid; gap: .75rem; padding: .75rem; }
-      tbody tr {
-        display: grid; gap: .65rem; padding: .9rem; border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg); background: var(--color-surface-2);
+      .stats-row { gap: .4rem; margin-bottom: .55rem; }
+      .stat-pill { padding: .32rem .55rem; }
+      .table-wrap { overflow-x: visible; }
+      table { table-layout: fixed; }
+      thead th {
+        padding: .45rem .35rem;
+        font-size: .68rem;
       }
-      tbody td { padding: 0; border: 0; }
-      .field-input, .status-select { background: var(--color-surface); border-color: var(--color-border); }
-      .footer-status { flex-direction: column; align-items: stretch; gap: .45rem; }
+      tbody td {
+        padding: .22rem .2rem;
+      }
+      thead th:nth-child(1), tbody td:nth-child(1) { width: 92px; }
+      thead th:nth-child(2), tbody td:nth-child(2) { width: 88px; }
+      thead th:nth-child(4), tbody td:nth-child(4) { width: 34px; }
+      textarea { resize: none; }
+
+    .field-input, .status-select {
+        min-height: 1.85rem;
+        padding: .22rem .38rem;
+        font-size: .78rem;
+      }
+      .status-select {
+        padding-right: 1.2rem;
+        background-position: right .35rem center;
+        background-size: 10px;
+      }
+      .field-input[data-role="task"] {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.2;
+        min-height: 1.85rem;
+        height: auto;
+      }
+      .field-input[data-role="assignee"] {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row-actions { justify-content: center; }
+      .delete-btn {
+        width: 1.7rem;
+        height: 1.7rem;
+      }
+      .footer-status { flex-direction: column; align-items: stretch; gap: .4rem; padding: .55rem .7rem; }
       .footer-cluster { justify-content: space-between; }
       .footer-message { white-space: normal; }
-      .toast-wrap { left: .5rem; right: .5rem; bottom: 5.4rem; }
+      .toast-wrap { left: .5rem; right: .5rem; bottom: 5rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -357,6 +395,7 @@
       </div>
       <div class="brand-text">
         <h1>Shared Task List</h1>
+        <p>Google Sheets + SheetDB</p>
       </div>
     </div>
     <div class="header-actions">
@@ -371,6 +410,13 @@
   </header>
 
   <main class="container">
+    <section class="hero">
+      <div class="hero-card">
+        <h2 class="hero-title">Fast shared checklist for phone and desktop</h2>
+        <p class="hero-subtitle">This version is rebuilt to use a simpler SheetDB flow: load rows, add rows, update rows by unique key, and delete rows by that same key.</p>
+      </div>
+    </section>
+
     <section class="toolbar" aria-label="Task controls">
       <div class="toolbar-left">
         <div class="search-shell">
@@ -433,6 +479,7 @@
 
   <script>
     const API_URL = 'https://sheetdb.io/api/v1/bu1qdo31doqhu';
+    const DEFAULT_COLUMNS = ['id', 'status', 'assignee', 'task'];
     const STATUS_VALUES = ['Not Started', 'In Progress', 'Complete'];
 
     const state = {
@@ -443,6 +490,7 @@
     };
 
     const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
     function uid() {
       return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
@@ -568,6 +616,14 @@
       return 'status-ns';
     }
 
+
+    function autosizeTextareas() {
+      document.querySelectorAll('textarea.field-input[data-role="task"]').forEach(el => {
+        el.style.height = 'auto';
+        el.style.height = Math.max(30, el.scrollHeight) + 'px';
+      });
+    }
+
     function renderStats() {
       const counts = {
         ns: state.tasks.filter(t => t.status === 'Not Started').length,
@@ -615,7 +671,7 @@
             <input class="field-input" data-role="assignee" data-id="${escapeHtml(task.id)}" value="${escapeHtml(task.assignee)}" placeholder="Assignee" />
           </td>
           <td>
-            <input class="field-input" data-role="task" data-id="${escapeHtml(task.id)}" value="${escapeHtml(task.task)}" placeholder="Describe task" />
+            <textarea class="field-input" data-role="task" data-id="${escapeHtml(task.id)}" placeholder="Describe task" rows="1">${escapeHtml(task.task)}</textarea>
           </td>
           <td>
             <div class="row-actions">
@@ -626,6 +682,7 @@
           </td>
         </tr>
       `).join('');
+      autosizeTextareas();
     }
 
     async function addTask() {
@@ -704,7 +761,7 @@
       }
     }
 
-    async function handleInputChange(event) {
+    function handleInputChange(event) {
       const target = event.target;
       const role = target.dataset.role;
       const id = target.dataset.id;
@@ -736,6 +793,11 @@
         const target = event.target;
         if (target.dataset.role === 'delete') return;
         await handleInputChange(event);
+      });
+
+      $('#taskBody').addEventListener('input', (event) => {
+        const target = event.target;
+        if (target.matches('textarea.field-input[data-role="task"]')) autosizeTextareas();
       });
 
       $('#taskBody').addEventListener('blur', async (event) => {
