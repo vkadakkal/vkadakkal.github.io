@@ -197,7 +197,7 @@ function norm(value) { return (value ?? '').toString().trim(); }
 function normalizeStatus(value) { const v = norm(value).toLowerCase(); if (v === 'packed') return 'packed'; if (v === 'delivered') return 'delivered'; return 'not packed'; }
 function normalizeType(value) { const v = norm(value).toLowerCase(); return v === 'personal' ? 'personal' : 'gift'; }
 function generateRowId() { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); return 'row-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); }
-function buildSheetPayload(row) { return { ID: norm(row.ID), Type: normalizeType(row.Type), Name: norm(row.Name), Item: norm(row.Item), Bag: norm(row.Bag), Status: normalizeStatus(row.Status) }; }
+function buildSheetPayload(row) { return { ID: norm(row.ID || row.id), Type: normalizeType(row.Type || row.type), Name: norm(row.Name), Item: norm(row.Item), Bag: norm(row.Bag), Status: normalizeStatus(row.Status) }; }
 async function createSheetRow(row) { const res = await fetch(SHEET_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ data: [buildSheetPayload(row)] }) }); if (!res.ok) throw new Error(`Create failed (${res.status})`); return res.json(); }
 async function updateSheetRowById(id, row) { const res = await fetch(buildRowUrlById(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ data: buildSheetPayload({ ...row, ID: id }) }) }); if (!res.ok) throw new Error(`Update failed (${res.status})`); return res.json(); }
 async function deleteSheetRowById(id) { const res = await fetch(buildRowUrlById(id), { method: 'DELETE', headers: { 'Accept': 'application/json' } }); if (!res.ok) throw new Error(`Delete failed (${res.status})`); return res.json(); }
@@ -224,16 +224,19 @@ async function loadData() {
     const res = await fetch(READ_URL, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error(`Read failed (${res.status})`);
     const data = await res.json();
-    state.rows = (Array.isArray(data) ? data : []).map((row, index) => ({
-      __id: index + 1,
-      __isNew: false,
-      ID: norm(row.ID),
-      Name: norm(row.Name),
-      Item: norm(row.Item),
-      Bag: norm(row.Bag),
-      Status: normalizeStatus(row.Status),
-      Type: normalizeType(row.Type),
-    }));
+    state.rows = (Array.isArray(data) ? data : []).map((row, index) => {
+      const existingId = norm(row.ID || row.id);
+      return {
+        __id: index + 1,
+        __isNew: false,
+        ID: existingId || generateRowId(),
+        Name: norm(row.Name),
+        Item: norm(row.Item),
+        Bag: norm(row.Bag),
+        Status: normalizeStatus(row.Status),
+        Type: normalizeType(row.Type || row.type),
+      };
+    });
     state.lastLoadAt = new Date();
     setConnectionState('connected', 'SheetDB: connected');
     setSyncState('connected', `Loaded ${state.rows.length} rows`);
@@ -275,7 +278,7 @@ function getRowValues(tr) { const out = {}; tr.querySelectorAll('.cell-input, .c
 function markDirty(tr, original) { const current = getRowValues(tr); tr.querySelectorAll('.cell-input, .cell-select').forEach(el => { const field = el.dataset.field; const changed = normalizeField(field, current[field]) !== normalizeField(field, original[field]); el.dataset.dirty = changed ? 'true' : 'false'; }); }
 function resetRow(tr, original) { tr.querySelectorAll('.cell-input, .cell-select').forEach(el => { el.value = original[el.dataset.field] || ''; if (el.dataset.field === 'Status') el.value = normalizeStatus(original.Status); if (el.dataset.field === 'Type') el.value = normalizeType(original.Type); el.dataset.dirty = 'false'; }); toast('Row reset', 'info'); }
 function disableRowControls(tr, disabled) { tr.querySelectorAll('.cell-input, .cell-select, button').forEach(el => el.disabled = disabled); }
-function buildPayloadFromValues(values, original) { return { ID: norm(values.ID || original.ID || generateRowId()), Type: normalizeType(values.Type), Name: norm(values.Name), Item: norm(values.Item), Bag: norm(values.Bag), Status: normalizeStatus(values.Status) }; }
+function buildPayloadFromValues(values, original) { return { ID: norm(values.ID || original.ID || original.id || generateRowId()), Type: normalizeType(values.Type || original.Type || original.type), Name: norm(values.Name), Item: norm(values.Item), Bag: norm(values.Bag), Status: normalizeStatus(values.Status) }; }
 function findRowIndexByOriginal(original) { return state.rows.findIndex(r => r.__id === original.__id); }
 function rowsEquivalent(a, b) { return norm(a.ID) === norm(b.ID) && norm(a.Name) === norm(b.Name) && norm(a.Item) === norm(b.Item) && norm(a.Bag) === norm(b.Bag) && normalizeStatus(a.Status) === normalizeStatus(b.Status) && normalizeType(a.Type) === normalizeType(b.Type); }
 
@@ -288,32 +291,28 @@ async function saveRow(tr, original) {
   if (!hasChanges && !original.__isNew) { toast('No changes to save', 'info'); return; }
   disableRowControls(tr, true); setSaving(true);
   try {
-    let nextRows = state.rows.map(r => ({ ...r }));
     if (original.__isNew) {
-      nextRows[index] = { ...nextRows[index], ...payload, __isNew: false };
+      await createSheetRow(payload);
+      state.rows[index] = { ...state.rows[index], ...payload, __isNew: false };
+      setSyncState('connected', `Created row · ${payload.Name || payload.Item || payload.ID}`);
+      toast('Entry created in sheet', 'success');
     } else {
-      nextRows[index] = { ...nextRows[index], ...payload };
+      const rowId = norm(original.ID || original.id || payload.ID);
+      await updateSheetRowById(rowId, payload);
+      state.rows[index] = { ...state.rows[index], ...payload, __isNew: false };
+      setSyncState('connected', `Updated row · ${payload.Name || payload.Item || payload.ID}`);
+      toast('Row saved to sheet', 'success');
     }
-    const cleanRows = nextRows.map(({__id,__isNew,...row}) => row);
-    const res = await fetch(`${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
-      body: JSON.stringify({ data: cleanRows })
-    });
-    if (!res.ok) throw new Error(`Save failed (${res.status})`);
-    state.rows = nextRows;
     state.lastWriteAt = new Date();
     setConnectionState('connected', 'SheetDB: connected');
-    setSyncState('connected', `Saved full sheet · ${payload.Name || payload.Item || payload.ID}`);
     refreshStatusBar();
     renderAll();
-    toast(original.__isNew ? 'Entry created in sheet' : 'Row saved to sheet', 'success');
   } catch (err) {
     setConnectionState('error', 'SheetDB: write error');
     setSyncState('error', `Write failed: ${err.message}`);
     refreshStatusBar();
     toast(`Save error: ${err.message}`, 'error');
-  } finally { setSaving(false); }
+  } finally { setSaving(false); disableRowControls(tr, false); }
 }
 
 async function deleteRow(tr, original) {
