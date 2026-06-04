@@ -127,11 +127,11 @@
           <select id="editor-status-filter" class="filter-select"><option value="">All statuses</option><option value="not packed">Not packed</option><option value="packed">Packed</option><option value="delivered">Delivered</option></select>
         </div>
         <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
-          <button class="btn-secondary" id="init-ids-btn"><i data-lucide="hash" style="width:16px;height:16px"></i>Initialize IDs</button>
+          
           <button class="btn-primary" id="add-row-btn"><i data-lucide="plus" style="width:16px;height:16px"></i>Add Entry</button>
         </div>
       </div>
-      <div class="helper" style="margin-bottom:12px">The app auto-generates IDs for new entries and can bulk initialize missing IDs for existing rows. After initialization, rows save and delete by ID. Existing rows without Type default to gift.</div>
+      <div class="helper" style="margin-bottom:12px">The app creates a unique ID only for new entries. Existing rows save and delete by ID. Existing rows without Type default to gift.</div>
       <div class="table-wrap"><table><thead><tr><th>#</th><th class="sortable" data-panel="editor" data-col="ID">ID <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Type">Type <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Name">Name <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Bag">Bag <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Status">Status <span class="sort-icon"></span></th><th>Actions</th></tr></thead><tbody id="editor-tbody"></tbody></table></div>
     </section>
   </main>
@@ -154,6 +154,8 @@
 const SHEET_NAME = 'Gifts';
 const API_ROOT = 'https://sheetdb.io/api/v1/mxauuf7bio87o';
 const READ_URL = `${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`;
+const SHEET_URL = `${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`;
+const buildRowUrlById = (id) => `${API_ROOT}/ID/${encodeURIComponent(id)}?sheet=${encodeURIComponent(SHEET_NAME)}`;
 
 const state = {
   rows: [],
@@ -195,6 +197,11 @@ function norm(value) { return (value ?? '').toString().trim(); }
 function normalizeStatus(value) { const v = norm(value).toLowerCase(); if (v === 'packed') return 'packed'; if (v === 'delivered') return 'delivered'; return 'not packed'; }
 function normalizeType(value) { const v = norm(value).toLowerCase(); return v === 'personal' ? 'personal' : 'gift'; }
 function generateRowId() { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); return 'row-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); }
+function buildSheetPayload(row) { return { ID: norm(row.ID), Type: normalizeType(row.Type), Name: norm(row.Name), Item: norm(row.Item), Bag: norm(row.Bag), Status: normalizeStatus(row.Status) }; }
+async function createSheetRow(row) { const res = await fetch(SHEET_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ data: [buildSheetPayload(row)] }) }); if (!res.ok) throw new Error(`Create failed (${res.status})`); return res.json(); }
+async function updateSheetRowById(id, row) { const res = await fetch(buildRowUrlById(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ data: buildSheetPayload({ ...row, ID: id }) }) }); if (!res.ok) throw new Error(`Update failed (${res.status})`); return res.json(); }
+async function deleteSheetRowById(id) { const res = await fetch(buildRowUrlById(id), { method: 'DELETE', headers: { 'Accept': 'application/json' } }); if (!res.ok) throw new Error(`Delete failed (${res.status})`); return res.json(); }
+
 function toast(message, type='info') { const wrap = document.getElementById('toast-wrap'); const node = document.createElement('div'); node.className = `toast ${type}`; node.textContent = message; wrap.appendChild(node); setTimeout(() => { node.style.opacity = '0'; node.style.transition = 'opacity 220ms'; setTimeout(() => node.remove(), 220); }, 2600); }
 function compare(a, b, dir='asc') { const av = norm(a).toLowerCase(); const bv = norm(b).toLowerCase(); if (av < bv) return dir === 'asc' ? -1 : 1; if (av > bv) return dir === 'asc' ? 1 : -1; return 0; }
 function formatTime(date) { if (!date) return '—'; return new Intl.DateTimeFormat(undefined, { hour:'numeric', minute:'2-digit', second:'2-digit' }).format(date); }
@@ -360,7 +367,7 @@ async function initializeMissingIds() {
   } finally { setSaving(false); }
 }
 
-function addNewRow() { const nextId = state.rows.length ? Math.max(...state.rows.map(r => r.__id)) + 1 : 1; state.rows.unshift({ __id: nextId, __isNew: true, ID: generateRowId(), Type: 'gift', Name: '', Item: '', Bag: '', Status: 'not packed' }); document.getElementById('editor-type-filter').value = ''; document.getElementById('editor-status-filter').value = ''; document.getElementById('editor-search').value = ''; renderAll(); switchTab('editor'); toast('New entry added locally. Click Save to write it to the sheet.', 'info'); }
+function addNewRow() { const nextId = state.rows.length ? Math.max(...state.rows.map(r => r.__id)) + 1 : 1; state.rows.unshift({ __id: nextId, __isNew: true, ID: '', Type: 'gift', Name: '', Item: '', Bag: '', Status: 'not packed' }); document.getElementById('editor-type-filter').value = ''; document.getElementById('editor-status-filter').value = ''; document.getElementById('editor-search').value = ''; renderAll(); switchTab('editor'); toast('New entry added locally. Click Save to create it in the sheet.', 'info'); }
 function updateSortUI(panel) { const sort = state.sorts[panel]; document.querySelectorAll(`th[data-panel="${panel}"]`).forEach(th => { th.classList.remove('asc','desc'); if (th.dataset.col === sort.col) th.classList.add(sort.dir); }); }
 function switchTab(tab) { state.activeTab = tab; document.querySelectorAll('.tab-btn').forEach(node => node.classList.toggle('active', node.dataset.tab === tab)); document.querySelectorAll('.panel').forEach(node => node.classList.toggle('active', node.id === `panel-${tab}`)); }
 
@@ -368,7 +375,7 @@ function bindEvents() {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
   document.getElementById('refresh-btn').addEventListener('click', loadData);
   document.getElementById('add-row-btn').addEventListener('click', addNewRow);
-  document.getElementById('init-ids-btn').addEventListener('click', initializeMissingIds);
+  
   document.getElementById('gift-inventory-search').addEventListener('input', () => renderInventory('gift'));
   document.getElementById('personal-inventory-search').addEventListener('input', () => renderInventory('personal'));
   document.getElementById('gift-status-search').addEventListener('input', () => renderStatusTable('gift'));
