@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gift Tracker</title>
+  <title>Gift & Personal Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -11,98 +11,70 @@
   <style>
     :root, [data-theme="light"] {
       --color-bg:#f7f6f2; --color-surface:#f9f8f5; --color-surface-2:#fbfbf9; --color-surface-offset:#f3f0ec;
-      --color-divider:#dcd9d5; --color-border:#d4d1ca; --color-text:#28251d; --color-text-muted:#7a7974;
-      --color-text-faint:#bab9b4; --color-text-inverse:#f9f8f4; --color-primary:#01696f; --color-primary-hover:#0c4e54;
-      --color-primary-highlight:#cedcd8; --color-success:#437a22; --color-success-highlight:#d4dfcc;
-      --color-warning:#964219; --color-warning-highlight:#ddcfc6; --color-orange:#da7101; --color-orange-highlight:#e7d7c4;
-      --color-error:#a12c7b; --radius-sm:.375rem; --radius-md:.5rem; --radius-lg:.75rem; --radius-xl:1rem; --radius-full:9999px;
+      --color-divider:#dcd9d5; --color-border:#d4d1ca; --color-text:#28251d; --color-text-muted:#7a7974; --color-text-faint:#bab9b4;
+      --color-primary:#01696f; --color-primary-hover:#0c4e54; --color-primary-highlight:#cedcd8;
+      --color-success:#437a22; --color-success-highlight:#d4dfcc; --color-warning:#964219; --color-warning-highlight:#ddcfc6;
+      --color-orange:#da7101; --color-orange-highlight:#e7d7c4; --color-error:#a12c7b;
+      --radius-sm:.375rem; --radius-md:.5rem; --radius-lg:.75rem; --radius-xl:1rem; --radius-full:9999px;
       --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-5:1.25rem; --space-6:1.5rem; --space-8:2rem; --space-10:2.5rem; --space-12:3rem;
-      --text-xs:clamp(.75rem,.7rem + .25vw,.875rem); --text-sm:clamp(.875rem,.8rem + .35vw,1rem); --text-base:clamp(1rem,.95rem + .25vw,1.125rem);
-      --text-lg:clamp(1.125rem,1rem + .75vw,1.5rem); --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
-      --font-body:'Inter','Helvetica Neue',sans-serif; --shadow-sm:0 1px 2px oklch(0.2 0.01 80 / 0.06); --shadow-md:0 4px 12px oklch(0.2 0.01 80 / 0.08);
-      --transition:180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --text-xs:clamp(.75rem,.7rem + .25vw,.875rem); --text-sm:clamp(.875rem,.8rem + .35vw,1rem); --text-base:clamp(1rem,.95rem + .25vw,1.125rem); --text-lg:clamp(1.125rem,1rem + .75vw,1.5rem); --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
+      --font-body:'Inter','Helvetica Neue',sans-serif; --shadow-sm:0 1px 2px oklch(0.2 0.01 80 / 0.06); --shadow-md:0 4px 12px oklch(0.2 0.01 80 / 0.08); --transition:180ms cubic-bezier(0.16,1,0.3,1);
     }
     [data-theme="dark"] {
       --color-bg:#171614; --color-surface:#1c1b19; --color-surface-2:#201f1d; --color-surface-offset:#1d1c1a;
       --color-divider:#262523; --color-border:#393836; --color-text:#cdccca; --color-text-muted:#979692; --color-text-faint:#666562;
-      --color-text-inverse:#2b2a28; --color-primary:#4f98a3; --color-primary-hover:#227f8b; --color-primary-highlight:#313b3b;
+      --color-primary:#4f98a3; --color-primary-hover:#227f8b; --color-primary-highlight:#313b3b;
       --color-success:#6daa45; --color-success-highlight:#3a4435; --color-warning:#bb653b; --color-warning-highlight:#564942;
-      --color-orange:#fdab43; --color-orange-highlight:#564b3e; --color-error:#d163a7; --shadow-sm:0 1px 2px oklch(0 0 0 / 0.2); --shadow-md:0 4px 12px oklch(0 0 0 / 0.3);
+      --color-orange:#fdab43; --color-orange-highlight:#564b3e; --color-error:#d163a7;
+      --shadow-sm:0 1px 2px oklch(0 0 0 / 0.2); --shadow-md:0 4px 12px oklch(0 0 0 / 0.3);
     }
-    *,:before,:after{box-sizing:border-box;margin:0;padding:0}
-    html{-webkit-text-size-adjust:none;text-size-adjust:none;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+    *,:before,:after{box-sizing:border-box;margin:0;padding:0} html{-webkit-text-size-adjust:none;text-size-adjust:none;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
     body{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);line-height:1.5;color:var(--color-text);background:var(--color-bg)}
     button,input,select{font:inherit;color:inherit} button{cursor:pointer;border:none;background:none} table{border-collapse:collapse;width:100%}
     img,svg{display:block;max-width:100%;height:auto} a,button,input,select,textarea{transition:color var(--transition),background var(--transition),border-color var(--transition),box-shadow var(--transition)}
     :focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;border-radius:var(--radius-sm)}
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @keyframes spin{to{transform:rotate(360deg)}}
-
     .app-shell{min-height:100dvh;display:flex;flex-direction:column}
     .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-6);background:var(--color-surface);border-bottom:1px solid var(--color-border);box-shadow:var(--shadow-sm)}
-    .brand{display:flex;align-items:center;gap:var(--space-3);font-size:var(--text-lg);font-weight:700}
-    .brand svg{color:var(--color-primary)} .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-2)}
-    .btn-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-md);color:var(--color-text-muted)}
-    .btn-icon:hover{background:var(--color-surface-offset);color:var(--color-text)}
-    .tabs{display:flex;gap:var(--space-1);padding:0 var(--space-6);background:var(--color-surface);border-bottom:1px solid var(--color-border)}
-    .tab-btn{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-5);font-size:var(--text-sm);font-weight:600;color:var(--color-text-muted);border-bottom:2px solid transparent}
-    .tab-btn.active{color:var(--color-primary);border-bottom-color:var(--color-primary)} .tab-count{padding:1px 8px;border-radius:var(--radius-full);background:var(--color-surface-offset);font-size:var(--text-xs)}
-    .tab-btn.active .tab-count{background:var(--color-primary-highlight);color:var(--color-primary)}
-    .main{flex:1;max-width:1180px;width:100%;margin:0 auto;padding:var(--space-6)}
-    .panel{display:none;animation:fadeIn .2s ease}.panel.active{display:block}
+    .brand{display:flex;align-items:center;gap:var(--space-3);font-size:var(--text-lg);font-weight:700}.brand svg{color:var(--color-primary)} .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-2)}
+    .btn-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-md);color:var(--color-text-muted)} .btn-icon:hover{background:var(--color-surface-offset);color:var(--color-text)}
+    .tabs{display:flex;gap:var(--space-1);padding:0 var(--space-6);background:var(--color-surface);border-bottom:1px solid var(--color-border);overflow:auto}
+    .tab-btn{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);font-size:var(--text-sm);font-weight:600;color:var(--color-text-muted);border-bottom:2px solid transparent;white-space:nowrap}
+    .tab-btn.active{color:var(--color-primary);border-bottom-color:var(--color-primary)} .tab-count{padding:1px 8px;border-radius:var(--radius-full);background:var(--color-surface-offset);font-size:var(--text-xs)} .tab-btn.active .tab-count{background:var(--color-primary-highlight);color:var(--color-primary)}
+    .main{flex:1;max-width:1320px;width:100%;margin:0 auto;padding:var(--space-6)} .panel{display:none;animation:fadeIn .2s ease}.panel.active{display:block}
     .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--space-4);margin-bottom:var(--space-6)}
-    .summary-card{padding:var(--space-4) var(--space-5);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
-    .summary-card .label{font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin-bottom:var(--space-1)}
-    .summary-card .value{font-size:var(--text-xl);line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums}.summary-card .sub{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1)}
-    .toolbar{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4)}
+    .summary-card{padding:var(--space-4) var(--space-5);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)} .summary-card .label{font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin-bottom:var(--space-1)} .summary-card .value{font-size:var(--text-xl);line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums} .summary-card .sub{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4)} .toolbar.spread{justify-content:space-between}
     .search-wrap{position:relative;flex:1;min-width:220px}.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);pointer-events:none}
-    .search-input,.filter-select,.cell-input,.cell-select{width:100%;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);font-size:var(--text-sm)}
-    .search-input{padding-left:36px}.filter-select{width:auto;min-width:150px}
-    .table-wrap{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);overflow:auto;box-shadow:var(--shadow-sm)}
-    th,td{padding:var(--space-3) var(--space-4);text-align:left;vertical-align:middle;border-bottom:1px solid var(--color-divider)}
-    thead th{position:sticky;top:0;background:var(--color-surface-offset);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);z-index:1}
-    tbody tr:hover{background:var(--color-surface-offset)} tbody tr:last-child td{border-bottom:none}
+    .search-input,.filter-select,.cell-input,.cell-select{width:100%;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);font-size:var(--text-sm)} .search-input{padding-left:36px} .filter-select{width:auto;min-width:150px}
+    .btn-primary,.btn-secondary,.btn-danger,.btn-small{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:700}
+    .btn-primary{background:var(--color-primary);color:#fff}.btn-primary:hover{background:var(--color-primary-hover)} .btn-secondary{background:var(--color-surface-offset);border:1px solid var(--color-border)} .btn-danger{background:var(--color-error);color:#fff}.btn-danger,.btn-small{font-size:var(--text-xs);padding:8px 12px}
+    .table-wrap{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);overflow:auto;box-shadow:var(--shadow-sm)} th,td{padding:var(--space-3) var(--space-4);text-align:left;vertical-align:middle;border-bottom:1px solid var(--color-divider)} thead th{position:sticky;top:0;background:var(--color-surface-offset);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);z-index:1} tbody tr:hover{background:var(--color-surface-offset)} tbody tr:last-child td{border-bottom:none}
     th.sortable{cursor:pointer;user-select:none}.sort-icon{display:inline-block;margin-left:4px;opacity:.45}.asc .sort-icon:after{content:'↑';opacity:1}.desc .sort-icon:after{content:'↓';opacity:1} th.sortable:not(.asc):not(.desc) .sort-icon:after{content:'↕'}
-    .count-pill,.row-num{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:26px;padding:0 10px;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;font-variant-numeric:tabular-nums}
-    .count-pill{background:var(--color-primary-highlight);color:var(--color-primary)} .row-num{background:var(--color-surface-offset);color:var(--color-text-muted)}
-    .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;white-space:nowrap}.badge-dot{width:7px;height:7px;border-radius:999px}
-    .badge-not-packed{background:var(--color-warning-highlight);color:var(--color-warning)} .badge-not-packed .badge-dot{background:var(--color-warning)}
-    .badge-packed{background:var(--color-orange-highlight);color:var(--color-orange)} .badge-packed .badge-dot{background:var(--color-orange)}
-    .badge-delivered{background:var(--color-success-highlight);color:var(--color-success)} .badge-delivered .badge-dot{background:var(--color-success)}
-    .cell-input,.cell-select{min-width:120px}.cell-input[data-dirty="true"],.cell-select[data-dirty="true"]{border-color:var(--color-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 18%, transparent)}
-    .cell-input[disabled],.cell-select[disabled]{opacity:.75;cursor:progress}
-    .actions{display:flex;gap:var(--space-2);align-items:center;justify-content:flex-end}.btn-small{padding:8px 12px;border-radius:var(--radius-md);font-size:var(--text-xs);font-weight:700}
-    .btn-save{background:var(--color-primary);color:#fff}.btn-save:hover{background:var(--color-primary-hover)} .btn-reset{background:var(--color-surface-offset);border:1px solid var(--color-border)}
-    .saving-indicator{display:none;align-items:center;gap:var(--space-2);padding:6px 10px;border-radius:var(--radius-full);background:var(--color-surface-offset);font-size:var(--text-xs);color:var(--color-text-muted)}
-    .spinner{width:16px;height:16px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:999px;animation:spin .7s linear infinite}
+    .count-pill,.row-num{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:26px;padding:0 10px;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;font-variant-numeric:tabular-nums} .count-pill{background:var(--color-primary-highlight);color:var(--color-primary)} .row-num{background:var(--color-surface-offset);color:var(--color-text-muted)}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;white-space:nowrap}.badge-dot{width:7px;height:7px;border-radius:999px}.badge-not-packed{background:var(--color-warning-highlight);color:var(--color-warning)} .badge-not-packed .badge-dot{background:var(--color-warning)} .badge-packed{background:var(--color-orange-highlight);color:var(--color-orange)} .badge-packed .badge-dot{background:var(--color-orange)} .badge-delivered{background:var(--color-success-highlight);color:var(--color-success)} .badge-delivered .badge-dot{background:var(--color-success)} .badge-gift{background:var(--color-primary-highlight);color:var(--color-primary)} .badge-gift .badge-dot{background:var(--color-primary)} .badge-personal{background:var(--color-surface-offset);color:var(--color-text)} .badge-personal .badge-dot{background:var(--color-text-muted)}
+    .cell-input,.cell-select{min-width:110px}.cell-input[data-dirty="true"],.cell-select[data-dirty="true"]{border-color:var(--color-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 18%, transparent)} .cell-input[disabled],.cell-select[disabled]{opacity:.75;cursor:progress}
+    .actions{display:flex;gap:var(--space-2);align-items:center;justify-content:flex-end}.saving-indicator{display:none;align-items:center;gap:var(--space-2);padding:6px 10px;border-radius:var(--radius-full);background:var(--color-surface-offset);font-size:var(--text-xs);color:var(--color-text-muted)} .spinner{width:16px;height:16px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:999px;animation:spin .7s linear infinite}
     .toast-wrap{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:8px;z-index:1000}.toast{padding:12px 14px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);color:#fff;font-size:var(--text-sm);animation:fadeIn .2s ease}.toast.success{background:var(--color-success)}.toast.error{background:var(--color-error)}.toast.info{background:var(--color-text)}
     .empty{padding:var(--space-12) var(--space-6);text-align:center;color:var(--color-text-muted)} .empty svg{margin:0 auto var(--space-4);color:var(--color-text-faint)} .empty h3{color:var(--color-text);font-size:var(--text-lg);margin-bottom:var(--space-2)}
     .skeleton{height:18px;border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--color-surface-offset) 25%,var(--color-divider) 50%,var(--color-surface-offset) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
-    .helper{font-size:var(--text-xs);color:var(--color-text-muted)}
-    .inventory-note{margin-bottom:var(--space-3);font-size:var(--text-sm);color:var(--color-text-muted)}
-
-    .statusbar{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:10px var(--space-6);background:var(--color-surface);border-top:1px solid var(--color-border);box-shadow:0 -1px 0 color-mix(in srgb,var(--color-border) 65%, transparent);font-size:var(--text-xs);color:var(--color-text-muted)}
-    .statusbar-left,.statusbar-right{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
-    .status-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--radius-full);background:var(--color-surface-offset);border:1px solid var(--color-border);color:var(--color-text)}
-    .status-dot{width:8px;height:8px;border-radius:999px;background:var(--color-text-faint)}
-    .status-chip.connected .status-dot{background:var(--color-success)}
-    .status-chip.loading .status-dot,.status-chip.writing .status-dot{background:var(--color-orange)}
-    .status-chip.error .status-dot{background:var(--color-error)}
-    .status-meta{font-variant-numeric:tabular-nums}
-    @media (max-width:720px){.topbar,.tabs,.main{padding-left:var(--space-4);padding-right:var(--space-4)} .summary-grid{grid-template-columns:repeat(2,1fr)} .filter-select{min-width:unset;flex:1} .actions{justify-content:flex-start} }
+    .helper{font-size:var(--text-xs);color:var(--color-text-muted)} .inventory-note{margin-bottom:var(--space-3);font-size:var(--text-sm);color:var(--color-text-muted)}
+    .statusbar{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:10px var(--space-6);background:var(--color-surface);border-top:1px solid var(--color-border);box-shadow:0 -1px 0 color-mix(in srgb,var(--color-border) 65%, transparent);font-size:var(--text-xs);color:var(--color-text-muted)} .statusbar-left,.statusbar-right{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap} .status-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--radius-full);background:var(--color-surface-offset);border:1px solid var(--color-border);color:var(--color-text)} .status-dot{width:8px;height:8px;border-radius:999px;background:var(--color-text-faint)} .status-chip.connected .status-dot{background:var(--color-success)} .status-chip.loading .status-dot,.status-chip.writing .status-dot{background:var(--color-orange)} .status-chip.error .status-dot{background:var(--color-error)} .status-meta{font-variant-numeric:tabular-nums}
+    @media (max-width:900px){.topbar,.tabs,.main,.statusbar{padding-left:var(--space-4);padding-right:var(--space-4)} .summary-grid{grid-template-columns:repeat(2,1fr)} .filter-select{min-width:unset;flex:1} .actions{justify-content:flex-start} }
   </style>
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="Gift Tracker logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="Tracker logo">
         <rect x="4" y="14" width="20" height="10" rx="2" fill="currentColor" opacity=".22"></rect>
         <rect x="2" y="11" width="24" height="5" rx="2" fill="currentColor" opacity=".48"></rect>
         <path d="M14 11V24" stroke="currentColor" stroke-width="2"></path>
         <path d="M14 11C14 11 11 7 9 8C7 9 9 11 14 11Z" fill="currentColor"></path>
         <path d="M14 11C14 11 17 7 19 8C21 9 19 11 14 11Z" fill="currentColor" opacity=".72"></path>
       </svg>
-      <span>Gift Tracker</span>
+      <span>Gift & Personal Tracker</span>
     </div>
     <div class="topbar-actions">
       <div class="saving-indicator" id="global-saving"><span class="spinner"></span><span>Saving…</span></div>
@@ -111,67 +83,56 @@
     </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Gift tracker tabs">
-    <button class="tab-btn active" role="tab" data-tab="inventory" aria-selected="true"><i data-lucide="package" style="width:15px;height:15px"></i>Inventory<span class="tab-count" id="inventory-tab-count">0</span></button>
-    <button class="tab-btn" role="tab" data-tab="editor" aria-selected="false"><i data-lucide="pencil" style="width:15px;height:15px"></i>Editor<span class="tab-count" id="editor-tab-count">0</span></button>
+  <nav class="tabs" role="tablist" aria-label="Tracker tabs">
+    <button class="tab-btn active" data-tab="gift-inventory"><i data-lucide="gift" style="width:15px;height:15px"></i>Gift Inventory<span class="tab-count" id="gift-inventory-count">0</span></button>
+    <button class="tab-btn" data-tab="personal-inventory"><i data-lucide="briefcase" style="width:15px;height:15px"></i>Personal Inventory<span class="tab-count" id="personal-inventory-count">0</span></button>
+    <button class="tab-btn" data-tab="gift-status"><i data-lucide="clipboard-check" style="width:15px;height:15px"></i>Gift Status<span class="tab-count" id="gift-status-count">0</span></button>
+    <button class="tab-btn" data-tab="personal-status"><i data-lucide="check-square" style="width:15px;height:15px"></i>Personal Status<span class="tab-count" id="personal-status-count">0</span></button>
+    <button class="tab-btn" data-tab="editor"><i data-lucide="pencil" style="width:15px;height:15px"></i>Editor<span class="tab-count" id="editor-count">0</span></button>
   </nav>
 
   <main class="main">
-    <section class="panel active" id="panel-inventory" role="tabpanel">
-      <div class="summary-grid" id="inventory-summary"></div>
-      <p class="inventory-note">This tab groups all rows by item and shows the total count per item.</p>
-      <div class="toolbar">
-        <div class="search-wrap">
-          <i data-lucide="search" style="width:16px;height:16px"></i>
-          <input id="inventory-search" class="search-input" type="text" placeholder="Search item…" aria-label="Search inventory by item">
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table aria-label="Inventory summary table">
-          <thead>
-            <tr>
-              <th class="sortable" data-panel="inventory" data-col="Item">Item <span class="sort-icon"></span></th>
-              <th class="sortable" data-panel="inventory" data-col="Count">Count <span class="sort-icon"></span></th>
-            </tr>
-          </thead>
-          <tbody id="inventory-tbody"></tbody>
-        </table>
-      </div>
+    <section class="panel active" id="panel-gift-inventory">
+      <div class="summary-grid" id="gift-inventory-summary"></div>
+      <p class="inventory-note">Grouped item counts for records marked as gift. Existing rows without a Type value default to gift.</p>
+      <div class="toolbar"><div class="search-wrap"><i data-lucide="search" style="width:16px;height:16px"></i><input id="gift-inventory-search" class="search-input" type="text" placeholder="Search gift item…"></div></div>
+      <div class="table-wrap"><table><thead><tr><th class="sortable" data-panel="gift-inventory" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="gift-inventory" data-col="Count">Count <span class="sort-icon"></span></th></tr></thead><tbody id="gift-inventory-tbody"></tbody></table></div>
     </section>
 
-    <section class="panel" id="panel-editor" role="tabpanel">
+    <section class="panel" id="panel-personal-inventory">
+      <div class="summary-grid" id="personal-inventory-summary"></div>
+      <p class="inventory-note">Grouped item counts for records marked as personal.</p>
+      <div class="toolbar"><div class="search-wrap"><i data-lucide="search" style="width:16px;height:16px"></i><input id="personal-inventory-search" class="search-input" type="text" placeholder="Search personal item…"></div></div>
+      <div class="table-wrap"><table><thead><tr><th class="sortable" data-panel="personal-inventory" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="personal-inventory" data-col="Count">Count <span class="sort-icon"></span></th></tr></thead><tbody id="personal-inventory-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-gift-status">
+      <div class="summary-grid" id="gift-status-summary"></div>
+      <div class="toolbar"><div class="search-wrap"><i data-lucide="search" style="width:16px;height:16px"></i><input id="gift-status-search" class="search-input" type="text" placeholder="Search gift rows…"></div><select id="gift-status-filter" class="filter-select"><option value="">All statuses</option><option value="not packed">Not packed</option><option value="packed">Packed</option><option value="delivered">Delivered</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th class="sortable" data-panel="gift-status" data-col="Name">Name <span class="sort-icon"></span></th><th class="sortable" data-panel="gift-status" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="gift-status" data-col="Bag">Bag <span class="sort-icon"></span></th><th>Status</th></tr></thead><tbody id="gift-status-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-personal-status">
+      <div class="summary-grid" id="personal-status-summary"></div>
+      <div class="toolbar"><div class="search-wrap"><i data-lucide="search" style="width:16px;height:16px"></i><input id="personal-status-search" class="search-input" type="text" placeholder="Search personal rows…"></div><select id="personal-status-filter" class="filter-select"><option value="">All statuses</option><option value="not packed">Not packed</option><option value="packed">Packed</option><option value="delivered">Delivered</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th class="sortable" data-panel="personal-status" data-col="Name">Name <span class="sort-icon"></span></th><th class="sortable" data-panel="personal-status" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="personal-status" data-col="Bag">Bag <span class="sort-icon"></span></th><th>Status</th></tr></thead><tbody id="personal-status-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-editor">
       <div class="summary-grid" id="editor-summary"></div>
-      <div class="toolbar">
-        <div class="search-wrap">
-          <i data-lucide="search" style="width:16px;height:16px"></i>
-          <input id="editor-search" class="search-input" type="text" placeholder="Search name, item, bag or status…" aria-label="Search editor rows">
+      <div class="toolbar spread">
+        <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;flex:1">
+          <div class="search-wrap" style="min-width:260px"><i data-lucide="search" style="width:16px;height:16px"></i><input id="editor-search" class="search-input" type="text" placeholder="Search name, item, bag, type or status…"></div>
+          <select id="editor-type-filter" class="filter-select"><option value="">All types</option><option value="gift">Gift</option><option value="personal">Personal</option></select>
+          <select id="editor-status-filter" class="filter-select"><option value="">All statuses</option><option value="not packed">Not packed</option><option value="packed">Packed</option><option value="delivered">Delivered</option></select>
         </div>
-        <select id="editor-status-filter" class="filter-select" aria-label="Filter editor rows by status">
-          <option value="">All statuses</option>
-          <option value="not packed">Not packed</option>
-          <option value="packed">Packed</option>
-          <option value="delivered">Delivered</option>
-        </select>
-        <select id="editor-person-filter" class="filter-select" aria-label="Filter editor rows by person">
-          <option value="">All people</option>
-        </select>
+        <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+          <button class="btn-secondary" id="init-ids-btn"><i data-lucide="hash" style="width:16px;height:16px"></i>Initialize IDs</button>
+          <button class="btn-primary" id="add-row-btn"><i data-lucide="plus" style="width:16px;height:16px"></i>Add Entry</button>
+        </div>
       </div>
-      <div class="helper" style="margin-bottom:12px">Edit any field inline. Use Save on a row to write updates back to Google Sheets through SheetDB.</div>
-      <div class="table-wrap">
-        <table aria-label="Gift row editor table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th class="sortable" data-panel="editor" data-col="Name">Name <span class="sort-icon"></span></th>
-              <th class="sortable" data-panel="editor" data-col="Item">Item <span class="sort-icon"></span></th>
-              <th class="sortable" data-panel="editor" data-col="Bag">Bag <span class="sort-icon"></span></th>
-              <th class="sortable" data-panel="editor" data-col="Status">Status <span class="sort-icon"></span></th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="editor-tbody"></tbody>
-        </table>
-      </div>
+      <div class="helper" style="margin-bottom:12px">The app auto-generates IDs for new entries and can bulk initialize missing IDs for existing rows. After initialization, rows save and delete by ID. Existing rows without Type default to gift.</div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th class="sortable" data-panel="editor" data-col="ID">ID <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Type">Type <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Name">Name <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Item">Item <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Bag">Bag <span class="sort-icon"></span></th><th class="sortable" data-panel="editor" data-col="Status">Status <span class="sort-icon"></span></th><th>Actions</th></tr></thead><tbody id="editor-tbody"></tbody></table></div>
     </section>
   </main>
 
@@ -196,14 +157,19 @@ const READ_URL = `${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`;
 
 const state = {
   rows: [],
-  inventorySort: { col: 'Item', dir: 'asc' },
-  editorSort: { col: 'Name', dir: 'asc' },
-  activeTab: 'inventory',
+  activeTab: 'gift-inventory',
   savingCount: 0,
   connectionState: 'idle',
   syncState: 'idle',
   lastLoadAt: null,
   lastWriteAt: null,
+  sorts: {
+    'gift-inventory': { col: 'Item', dir: 'asc' },
+    'personal-inventory': { col: 'Item', dir: 'asc' },
+    'gift-status': { col: 'Name', dir: 'asc' },
+    'personal-status': { col: 'Name', dir: 'asc' },
+    'editor': { col: 'Name', dir: 'asc' },
+  }
 };
 
 function setThemeButton(mode) {
@@ -224,359 +190,200 @@ function setThemeButton(mode) {
   });
 })();
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function escapeHtml(value) { return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function norm(value) { return (value ?? '').toString().trim(); }
-function normalizeStatus(value) {
-  const v = norm(value).toLowerCase();
-  if (v === 'packed') return 'packed';
-  if (v === 'delivered') return 'delivered';
-  return 'not packed';
-}
-function statusBadge(status) {
-  const s = normalizeStatus(status);
-  const label = s.replace(/\b\w/g, c => c.toUpperCase());
-  return `<span class="badge badge-${s.replace(/\s+/g,'-')}"><span class="badge-dot"></span>${label}</span>`;
-}
-function toast(message, type='info') {
-  const wrap = document.getElementById('toast-wrap');
-  const node = document.createElement('div');
-  node.className = `toast ${type}`;
-  node.textContent = message;
-  wrap.appendChild(node);
-  setTimeout(() => { node.style.opacity = '0'; node.style.transition = 'opacity 220ms'; setTimeout(() => node.remove(), 220); }, 2600);
-}
-function setSaving(active) {
-  state.savingCount += active ? 1 : -1;
-  if (state.savingCount < 0) state.savingCount = 0;
-  document.getElementById('global-saving').style.display = state.savingCount > 0 ? 'flex' : 'none';
-  if (state.savingCount > 0) {
-    setConnectionState('connected', 'SheetDB: connected');
-    setSyncState('writing', 'Writing changes to SheetDB…');
-  } else if (state.syncState === 'writing') {
-    setSyncState('connected', 'Write finished');
-  }
-  refreshStatusBar();
-}
-function compare(a, b, dir='asc') {
-  const av = norm(a).toLowerCase();
-  const bv = norm(b).toLowerCase();
-  if (av < bv) return dir === 'asc' ? -1 : 1;
-  if (av > bv) return dir === 'asc' ? 1 : -1;
-  return 0;
-}
-
-function formatTime(date) {
-  if (!date) return '—';
-  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(date);
-}
-function setConnectionState(mode, text) {
-  state.connectionState = mode;
-  const chip = document.getElementById('sheetdb-connection-chip');
-  chip.className = `status-chip ${mode}`;
-  document.getElementById('sheetdb-connection-text').textContent = text;
-}
-function setSyncState(mode, text) {
-  state.syncState = mode;
-  const chip = document.getElementById('sheetdb-sync-chip');
-  chip.className = `status-chip ${mode}`;
-  document.getElementById('sheetdb-sync-text').textContent = text;
-}
-function refreshStatusBar() {
-  document.getElementById('sheetdb-last-load').textContent = `Last load: ${formatTime(state.lastLoadAt)}`;
-  document.getElementById('sheetdb-last-write').textContent = `Last write: ${formatTime(state.lastWriteAt)}`;
-  document.getElementById('sheetdb-row-count').textContent = `Rows: ${state.rows.length}`;
-}
-
-function showLoading() {
-  setConnectionState('loading', 'SheetDB: connecting…');
-  setSyncState('loading', 'Loading rows from SheetDB…');
-  refreshStatusBar();
-  document.getElementById('inventory-tbody').innerHTML = Array.from({length:6}, () => '<tr><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>').join('');
-  document.getElementById('editor-tbody').innerHTML = Array.from({length:6}, () => '<tr><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>').join('');
-}
-function showEmpty(tbodyId, colspan, title, text, icon='inbox') {
-  document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${colspan}"><div class="empty"><i data-lucide="${icon}" style="width:48px;height:48px"></i><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></td></tr>`;
-  lucide.createIcons();
+function normalizeStatus(value) { const v = norm(value).toLowerCase(); if (v === 'packed') return 'packed'; if (v === 'delivered') return 'delivered'; return 'not packed'; }
+function normalizeType(value) { const v = norm(value).toLowerCase(); return v === 'personal' ? 'personal' : 'gift'; }
+function generateRowId() { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); return 'row-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); }
+function toast(message, type='info') { const wrap = document.getElementById('toast-wrap'); const node = document.createElement('div'); node.className = `toast ${type}`; node.textContent = message; wrap.appendChild(node); setTimeout(() => { node.style.opacity = '0'; node.style.transition = 'opacity 220ms'; setTimeout(() => node.remove(), 220); }, 2600); }
+function compare(a, b, dir='asc') { const av = norm(a).toLowerCase(); const bv = norm(b).toLowerCase(); if (av < bv) return dir === 'asc' ? -1 : 1; if (av > bv) return dir === 'asc' ? 1 : -1; return 0; }
+function formatTime(date) { if (!date) return '—'; return new Intl.DateTimeFormat(undefined, { hour:'numeric', minute:'2-digit', second:'2-digit' }).format(date); }
+function setConnectionState(mode, text) { state.connectionState = mode; const chip = document.getElementById('sheetdb-connection-chip'); chip.className = `status-chip ${mode}`; document.getElementById('sheetdb-connection-text').textContent = text; }
+function setSyncState(mode, text) { state.syncState = mode; const chip = document.getElementById('sheetdb-sync-chip'); chip.className = `status-chip ${mode}`; document.getElementById('sheetdb-sync-text').textContent = text; }
+function refreshStatusBar() { document.getElementById('sheetdb-last-load').textContent = `Last load: ${formatTime(state.lastLoadAt)}`; document.getElementById('sheetdb-last-write').textContent = `Last write: ${formatTime(state.lastWriteAt)}`; document.getElementById('sheetdb-row-count').textContent = `Rows: ${state.rows.length}`; }
+function setSaving(active) { state.savingCount += active ? 1 : -1; if (state.savingCount < 0) state.savingCount = 0; document.getElementById('global-saving').style.display = state.savingCount > 0 ? 'flex' : 'none'; if (state.savingCount > 0) { setConnectionState('connected', 'SheetDB: connected'); setSyncState('writing', 'Writing changes to SheetDB…'); } else if (state.syncState === 'writing') { setSyncState('connected', 'Write finished'); } refreshStatusBar(); }
+function statusBadge(status) { const s = normalizeStatus(status); const label = s.replace(/\b\w/g, c => c.toUpperCase()); return `<span class="badge badge-${s.replace(/\s+/g,'-')}"><span class="badge-dot"></span>${label}</span>`; }
+function showEmpty(tbodyId, colspan, title, text, icon='inbox') { document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${colspan}"><div class="empty"><i data-lucide="${icon}" style="width:48px;height:48px"></i><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></td></tr>`; lucide.createIcons(); }
+function showLoadingAll() {
+  setConnectionState('loading', 'SheetDB: connecting…'); setSyncState('loading', 'Loading rows from SheetDB…'); refreshStatusBar();
+  ['gift-inventory-tbody','personal-inventory-tbody'].forEach(id => document.getElementById(id).innerHTML = Array.from({length:6}, () => '<tr><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>').join(''));
+  ['gift-status-tbody','personal-status-tbody'].forEach(id => document.getElementById(id).innerHTML = Array.from({length:6}, () => '<tr><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>').join(''));
+  document.getElementById('editor-tbody').innerHTML = Array.from({length:6}, () => '<tr><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>').join('');
 }
 
 async function loadData() {
-  showLoading();
+  showLoadingAll();
   try {
     const res = await fetch(READ_URL, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error(`Read failed (${res.status})`);
     const data = await res.json();
     state.rows = (Array.isArray(data) ? data : []).map((row, index) => ({
       __id: index + 1,
+      __isNew: false,
+      ID: norm(row.ID),
       Name: norm(row.Name),
       Item: norm(row.Item),
       Bag: norm(row.Bag),
       Status: normalizeStatus(row.Status),
+      Type: normalizeType(row.Type),
     }));
     state.lastLoadAt = new Date();
     setConnectionState('connected', 'SheetDB: connected');
-    setSyncState('connected', `Loaded ${state.rows.length} row${state.rows.length === 1 ? '' : 's'}`);
+    setSyncState('connected', `Loaded ${state.rows.length} rows`);
     refreshStatusBar();
     renderAll();
     toast(`Loaded ${state.rows.length} rows`, 'info');
   } catch (err) {
-    setConnectionState('error', 'SheetDB: connection failed');
-    setSyncState('error', `Load failed: ${err.message}`);
-    refreshStatusBar();
-    showEmpty('inventory-tbody', 2, 'Could not load data', err.message, 'wifi-off');
-    showEmpty('editor-tbody', 6, 'Could not load data', err.message, 'wifi-off');
+    setConnectionState('error', 'SheetDB: connection failed'); setSyncState('error', `Load failed: ${err.message}`); refreshStatusBar();
+    ['gift-inventory-tbody','personal-inventory-tbody'].forEach(id => showEmpty(id, 2, 'Could not load data', err.message, 'wifi-off'));
+    ['gift-status-tbody','personal-status-tbody'].forEach(id => showEmpty(id, 4, 'Could not load data', err.message, 'wifi-off'));
+    showEmpty('editor-tbody', 8, 'Could not load data', err.message, 'wifi-off');
     toast(`Load error: ${err.message}`, 'error');
   }
 }
 
-function renderAll() {
-  updateCounts();
-  renderInventorySummary();
-  renderEditorSummary();
-  renderPeopleFilter();
-  renderInventoryTable();
-  renderEditorTable();
-  lucide.createIcons();
-}
+function getRowsByType(type) { return state.rows.filter(r => normalizeType(r.Type) === type); }
+function summarizeStatus(rows) { return { total: rows.length, notPacked: rows.filter(r => r.Status === 'not packed').length, packed: rows.filter(r => r.Status === 'packed').length, delivered: rows.filter(r => r.Status === 'delivered').length, uniqueItems: new Set(rows.map(r => r.Item).filter(Boolean)).size }; }
+function renderSummary(targetId, rows, mode) { const s = summarizeStatus(rows); const titlePrefix = mode === 'gift' ? 'Gift' : 'Personal'; document.getElementById(targetId).innerHTML = `<div class="summary-card"><div class="label">${titlePrefix} Rows</div><div class="value">${s.total}</div><div class="sub">matching entries</div></div><div class="summary-card"><div class="label">Unique Items</div><div class="value">${s.uniqueItems}</div><div class="sub">distinct item names</div></div><div class="summary-card"><div class="label">Packed</div><div class="value" style="color:var(--color-orange)">${s.packed}</div><div class="sub">status count</div></div><div class="summary-card"><div class="label">Delivered</div><div class="value" style="color:var(--color-success)">${s.delivered}</div><div class="sub">status count</div></div>`; }
+function updateCounts() { const gifts = getRowsByType('gift').length; const personal = getRowsByType('personal').length; document.getElementById('gift-inventory-count').textContent = gifts; document.getElementById('gift-status-count').textContent = gifts; document.getElementById('personal-inventory-count').textContent = personal; document.getElementById('personal-status-count').textContent = personal; document.getElementById('editor-count').textContent = state.rows.length; }
+function renderAll() { updateCounts(); renderSummary('gift-inventory-summary', getRowsByType('gift'), 'gift'); renderSummary('personal-inventory-summary', getRowsByType('personal'), 'personal'); renderSummary('gift-status-summary', getRowsByType('gift'), 'gift'); renderSummary('personal-status-summary', getRowsByType('personal'), 'personal'); renderEditorSummary(); renderInventory('gift'); renderInventory('personal'); renderStatusTable('gift'); renderStatusTable('personal'); renderEditorTable(); lucide.createIcons(); }
+function renderEditorSummary() { const personal = getRowsByType('personal').length; const gifts = getRowsByType('gift').length; const missingIds = state.rows.filter(r => !norm(r.ID)).length; document.getElementById('editor-summary').innerHTML = `<div class="summary-card"><div class="label">All Rows</div><div class="value">${state.rows.length}</div><div class="sub">editable entries</div></div><div class="summary-card"><div class="label">Gift Rows</div><div class="value">${gifts}</div><div class="sub">type = gift</div></div><div class="summary-card"><div class="label">Personal Rows</div><div class="value">${personal}</div><div class="sub">type = personal</div></div><div class="summary-card"><div class="label">Missing IDs</div><div class="value">${missingIds}</div><div class="sub">initialize to save reliably</div></div>`; }
 
-function updateCounts() {
-  document.getElementById('inventory-tab-count').textContent = state.rows.length;
-  document.getElementById('editor-tab-count').textContent = state.rows.length;
-}
+function getInventoryEntries(type) { const inputId = type === 'gift' ? 'gift-inventory-search' : 'personal-inventory-search'; const panel = type === 'gift' ? 'gift-inventory' : 'personal-inventory'; const q = document.getElementById(inputId).value.trim().toLowerCase(); const map = new Map(); getRowsByType(type).forEach(row => { const key = row.Item || '(blank)'; map.set(key, (map.get(key) || 0) + 1); }); let entries = [...map.entries()].map(([Item, Count]) => ({ Item, Count })); if (q) entries = entries.filter(entry => entry.Item.toLowerCase().includes(q)); const { col, dir } = state.sorts[panel]; entries.sort((a,b) => col === 'Count' ? (dir === 'asc' ? a.Count - b.Count : b.Count - a.Count) : compare(a[col], b[col], dir)); return entries; }
+function renderInventory(type) { const panel = type === 'gift' ? 'gift-inventory' : 'personal-inventory'; const tbodyId = `${panel}-tbody`; const entries = getInventoryEntries(type); if (!entries.length) return showEmpty(tbodyId, 2, `No ${type} items found`, 'Try a different search term.', 'search-x'); document.getElementById(tbodyId).innerHTML = entries.map(entry => `<tr><td>${escapeHtml(entry.Item)}</td><td><span class="count-pill">${entry.Count}</span></td></tr>`).join(''); updateSortUI(panel); }
+function getFilteredStatusRows(type) { const searchId = type === 'gift' ? 'gift-status-search' : 'personal-status-search'; const filterId = type === 'gift' ? 'gift-status-filter' : 'personal-status-filter'; const panel = type === 'gift' ? 'gift-status' : 'personal-status'; const q = document.getElementById(searchId).value.trim().toLowerCase(); const status = document.getElementById(filterId).value; let rows = getRowsByType(type).filter(row => { const haystack = [row.Name, row.Item, row.Bag, row.Status].join(' ').toLowerCase(); return (!q || haystack.includes(q)) && (!status || row.Status === status); }); const { col, dir } = state.sorts[panel]; rows = [...rows].sort((a,b) => compare(a[col], b[col], dir)); return rows; }
+function renderStatusTable(type) { const panel = type === 'gift' ? 'gift-status' : 'personal-status'; const tbodyId = `${panel}-tbody`; const rows = getFilteredStatusRows(type); if (!rows.length) return showEmpty(tbodyId, 4, `No ${type} rows found`, 'Try adjusting search or status.', 'search-x'); document.getElementById(tbodyId).innerHTML = rows.map(row => `<tr><td>${escapeHtml(row.Name || '—')}</td><td>${escapeHtml(row.Item || '—')}</td><td>${escapeHtml(row.Bag || '—')}</td><td>${statusBadge(row.Status)}</td></tr>`).join(''); updateSortUI(panel); }
 
-function renderInventorySummary() {
-  const total = state.rows.length;
-  const uniqueItems = new Set(state.rows.map(r => r.Item).filter(Boolean)).size;
-  const packed = state.rows.filter(r => r.Status === 'packed').length;
-  const delivered = state.rows.filter(r => r.Status === 'delivered').length;
-  document.getElementById('inventory-summary').innerHTML = `
-    <div class="summary-card"><div class="label">Total Rows</div><div class="value">${total}</div><div class="sub">sheet entries</div></div>
-    <div class="summary-card"><div class="label">Unique Items</div><div class="value">${uniqueItems}</div><div class="sub">grouped in inventory</div></div>
-    <div class="summary-card"><div class="label">Packed</div><div class="value" style="color:var(--color-orange)">${packed}</div><div class="sub">status count</div></div>
-    <div class="summary-card"><div class="label">Delivered</div><div class="value" style="color:var(--color-success)">${delivered}</div><div class="sub">status count</div></div>`;
-}
-
-function renderEditorSummary() {
-  const total = state.rows.length;
-  const people = new Set(state.rows.map(r => r.Name).filter(Boolean)).size;
-  const bags = new Set(state.rows.map(r => r.Bag).filter(Boolean)).size;
-  const notPacked = state.rows.filter(r => r.Status === 'not packed').length;
-  document.getElementById('editor-summary').innerHTML = `
-    <div class="summary-card"><div class="label">People</div><div class="value">${people}</div><div class="sub">unique names</div></div>
-    <div class="summary-card"><div class="label">Bags</div><div class="value">${bags}</div><div class="sub">unique bag values</div></div>
-    <div class="summary-card"><div class="label">Not Packed</div><div class="value" style="color:var(--color-warning)">${notPacked}</div><div class="sub">needs work</div></div>
-    <div class="summary-card"><div class="label">Total</div><div class="value">${total}</div><div class="sub">editable rows</div></div>`;
-}
-
-function renderPeopleFilter() {
-  const select = document.getElementById('editor-person-filter');
-  const selected = select.value;
-  const people = [...new Set(state.rows.map(r => r.Name).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  select.innerHTML = '<option value="">All people</option>' + people.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-  select.value = people.includes(selected) ? selected : '';
-}
-
-function getInventoryEntries() {
-  const q = document.getElementById('inventory-search').value.trim().toLowerCase();
-  const map = new Map();
-  state.rows.forEach(row => {
-    const key = row.Item || '(blank)';
-    map.set(key, (map.get(key) || 0) + 1);
-  });
-  let entries = [...map.entries()].map(([Item, Count]) => ({ Item, Count }));
-  if (q) entries = entries.filter(entry => entry.Item.toLowerCase().includes(q));
-  const { col, dir } = state.inventorySort;
-  entries.sort((a,b) => col === 'Count' ? (dir === 'asc' ? a.Count - b.Count : b.Count - a.Count) : compare(a[col], b[col], dir));
-  return entries;
-}
-
-function renderInventoryTable() {
-  const tbody = document.getElementById('inventory-tbody');
-  const entries = getInventoryEntries();
-  if (!entries.length) return showEmpty('inventory-tbody', 2, 'No items found', 'Try a different search term.', 'search-x');
-  tbody.innerHTML = entries.map(entry => `
-    <tr>
-      <td>${escapeHtml(entry.Item)}</td>
-      <td><span class="count-pill">${entry.Count}</span></td>
-    </tr>`).join('');
-  updateSortUI('inventory');
-}
-
-function getEditorRows() {
-  const q = document.getElementById('editor-search').value.trim().toLowerCase();
-  const status = document.getElementById('editor-status-filter').value;
-  const person = document.getElementById('editor-person-filter').value;
-  let rows = state.rows.filter(row => {
-    const haystack = [row.Name, row.Item, row.Bag, row.Status].join(' ').toLowerCase();
-    const matchQ = !q || haystack.includes(q);
-    const matchStatus = !status || row.Status === status;
-    const matchPerson = !person || row.Name === person;
-    return matchQ && matchStatus && matchPerson;
-  });
-  const { col, dir } = state.editorSort;
-  rows = [...rows].sort((a,b) => compare(a[col], b[col], dir));
-  return rows;
-}
-
+function getEditorRows() { const q = document.getElementById('editor-search').value.trim().toLowerCase(); const type = document.getElementById('editor-type-filter').value; const status = document.getElementById('editor-status-filter').value; let rows = state.rows.filter(row => { const haystack = [row.ID, row.Type, row.Name, row.Item, row.Bag, row.Status].join(' ').toLowerCase(); return (!q || haystack.includes(q)) && (!type || row.Type === type) && (!status || row.Status === status); }); const { col, dir } = state.sorts.editor; return [...rows].sort((a,b) => compare(a[col], b[col], dir)); }
 function renderEditorTable() {
-  const tbody = document.getElementById('editor-tbody');
-  const rows = getEditorRows();
-  if (!rows.length) return showEmpty('editor-tbody', 6, 'No rows found', 'Try adjusting the search or filters.', 'search-x');
-  tbody.innerHTML = rows.map((row, i) => `
-    <tr data-row-id="${row.__id}">
-      <td><span class="row-num">${i + 1}</span></td>
-      <td><input class="cell-input" data-field="Name" value="${escapeHtml(row.Name)}" aria-label="Name row ${i+1}"></td>
-      <td><input class="cell-input" data-field="Item" value="${escapeHtml(row.Item)}" aria-label="Item row ${i+1}"></td>
-      <td><input class="cell-input" data-field="Bag" value="${escapeHtml(row.Bag)}" aria-label="Bag row ${i+1}"></td>
-      <td>
-        <select class="cell-select" data-field="Status" aria-label="Status row ${i+1}">
-          <option value="not packed" ${row.Status === 'not packed' ? 'selected' : ''}>Not packed</option>
-          <option value="packed" ${row.Status === 'packed' ? 'selected' : ''}>Packed</option>
-          <option value="delivered" ${row.Status === 'delivered' ? 'selected' : ''}>Delivered</option>
-        </select>
-      </td>
-      <td>
-        <div class="actions">
-          <button class="btn-small btn-reset" data-action="reset">Reset</button>
-          <button class="btn-small btn-save" data-action="save">Save</button>
-        </div>
-      </td>
-    </tr>`).join('');
-
-  tbody.querySelectorAll('tr').forEach(tr => {
-    const rowId = Number(tr.dataset.rowId);
-    const original = state.rows.find(r => r.__id === rowId);
-    const fields = tr.querySelectorAll('.cell-input, .cell-select');
-    fields.forEach(input => {
-      const field = input.dataset.field;
-      input.addEventListener('input', () => markDirty(tr, original));
-      input.addEventListener('change', () => markDirty(tr, original));
-      if (field === 'Status') input.value = normalizeStatus(input.value);
-    });
-    tr.querySelector('[data-action="reset"]').addEventListener('click', () => resetRow(tr, original));
-    tr.querySelector('[data-action="save"]').addEventListener('click', () => saveRow(tr, original));
-  });
+  const tbody = document.getElementById('editor-tbody'); const rows = getEditorRows();
+  if (!rows.length) return showEmpty('editor-tbody', 8, 'No rows found', 'Try adjusting the editor filters.', 'search-x');
+  tbody.innerHTML = rows.map((row, i) => `<tr data-row-id="${row.__id}"><td><span class="row-num">${i + 1}</span></td><td><input class="cell-input" data-field="ID" value="${escapeHtml(row.ID)}" aria-label="ID row ${i+1}" placeholder="auto"></td><td><select class="cell-select" data-field="Type"><option value="gift" ${row.Type === 'gift' ? 'selected' : ''}>Gift</option><option value="personal" ${row.Type === 'personal' ? 'selected' : ''}>Personal</option></select></td><td><input class="cell-input" data-field="Name" value="${escapeHtml(row.Name)}"></td><td><input class="cell-input" data-field="Item" value="${escapeHtml(row.Item)}"></td><td><input class="cell-input" data-field="Bag" value="${escapeHtml(row.Bag)}"></td><td><select class="cell-select" data-field="Status"><option value="not packed" ${row.Status === 'not packed' ? 'selected' : ''}>Not packed</option><option value="packed" ${row.Status === 'packed' ? 'selected' : ''}>Packed</option><option value="delivered" ${row.Status === 'delivered' ? 'selected' : ''}>Delivered</option></select></td><td><div class="actions"><button class="btn-small btn-secondary" data-action="reset">Reset</button><button class="btn-small btn-primary" data-action="save">Save</button><button class="btn-danger" data-action="delete">Delete</button></div></td></tr>`).join('');
+  tbody.querySelectorAll('tr').forEach(tr => { const rowId = Number(tr.dataset.rowId); const original = state.rows.find(r => r.__id === rowId); tr.querySelectorAll('.cell-input, .cell-select').forEach(input => { input.addEventListener('input', () => markDirty(tr, original)); input.addEventListener('change', () => markDirty(tr, original)); }); tr.querySelector('[data-action="reset"]').addEventListener('click', () => resetRow(tr, original)); tr.querySelector('[data-action="save"]').addEventListener('click', () => saveRow(tr, original)); tr.querySelector('[data-action="delete"]').addEventListener('click', () => deleteRow(tr, original)); });
   updateSortUI('editor');
 }
 
-function markDirty(tr, original) {
-  const current = getRowValues(tr);
-  tr.querySelectorAll('.cell-input, .cell-select').forEach(el => {
-    const field = el.dataset.field;
-    const changed = normalizeField(field, current[field]) !== normalizeField(field, original[field]);
-    el.dataset.dirty = changed ? 'true' : 'false';
-  });
-}
-function normalizeField(field, value) {
-  return field === 'Status' ? normalizeStatus(value) : norm(value);
-}
-function getRowValues(tr) {
-  const out = {};
-  tr.querySelectorAll('.cell-input, .cell-select').forEach(el => out[el.dataset.field] = el.value);
-  return out;
-}
-function resetRow(tr, original) {
-  tr.querySelectorAll('.cell-input, .cell-select').forEach(el => {
-    el.value = original[el.dataset.field] || '';
-    if (el.dataset.field === 'Status') el.value = normalizeStatus(original.Status);
-    el.dataset.dirty = 'false';
-  });
-  toast('Row reset', 'info');
-}
+function normalizeField(field, value) { if (field === 'Status') return normalizeStatus(value); if (field === 'Type') return normalizeType(value); return norm(value); }
+function getRowValues(tr) { const out = {}; tr.querySelectorAll('.cell-input, .cell-select').forEach(el => out[el.dataset.field] = el.value); return out; }
+function markDirty(tr, original) { const current = getRowValues(tr); tr.querySelectorAll('.cell-input, .cell-select').forEach(el => { const field = el.dataset.field; const changed = normalizeField(field, current[field]) !== normalizeField(field, original[field]); el.dataset.dirty = changed ? 'true' : 'false'; }); }
+function resetRow(tr, original) { tr.querySelectorAll('.cell-input, .cell-select').forEach(el => { el.value = original[el.dataset.field] || ''; if (el.dataset.field === 'Status') el.value = normalizeStatus(original.Status); if (el.dataset.field === 'Type') el.value = normalizeType(original.Type); el.dataset.dirty = 'false'; }); toast('Row reset', 'info'); }
+function disableRowControls(tr, disabled) { tr.querySelectorAll('.cell-input, .cell-select, button').forEach(el => el.disabled = disabled); }
+function buildPayloadFromValues(values, original) { return { ID: norm(values.ID || original.ID || generateRowId()), Type: normalizeType(values.Type), Name: norm(values.Name), Item: norm(values.Item), Bag: norm(values.Bag), Status: normalizeStatus(values.Status) }; }
+function findRowIndexByOriginal(original) { return state.rows.findIndex(r => r.__id === original.__id); }
+function rowsEquivalent(a, b) { return norm(a.ID) === norm(b.ID) && norm(a.Name) === norm(b.Name) && norm(a.Item) === norm(b.Item) && norm(a.Bag) === norm(b.Bag) && normalizeStatus(a.Status) === normalizeStatus(b.Status) && normalizeType(a.Type) === normalizeType(b.Type); }
 
 async function saveRow(tr, original) {
   const values = getRowValues(tr);
-  const payload = {
-    Name: norm(values.Name),
-    Item: norm(values.Item),
-    Bag: norm(values.Bag),
-    Status: normalizeStatus(values.Status),
-  };
-  const originalKey = { Name: original.Name, Item: original.Item, Bag: original.Bag, Status: normalizeStatus(original.Status) };
-  const hasChanges = Object.keys(payload).some(k => normalizeField(k, payload[k]) !== normalizeField(k, originalKey[k]));
-  if (!hasChanges) {
-    toast('No changes to save', 'info');
-    return;
-  }
-
-  const controls = tr.querySelectorAll('.cell-input, .cell-select, button');
-  controls.forEach(el => el.disabled = true);
-  setSaving(true);
+  const payload = buildPayloadFromValues(values, original);
+  const index = findRowIndexByOriginal(original);
+  const existing = index >= 0 ? state.rows[index] : null;
+  const hasChanges = !existing || !rowsEquivalent(payload, existing);
+  if (!hasChanges && !original.__isNew) { toast('No changes to save', 'info'); return; }
+  disableRowControls(tr, true); setSaving(true);
   try {
-    const query = new URLSearchParams({ sheet: SHEET_NAME, Name: original.Name, Item: original.Item, Bag: original.Bag, Status: normalizeStatus(original.Status) });
-    const url = `${API_ROOT}?${query.toString()}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ data: payload })
+    let nextRows = state.rows.map(r => ({ ...r }));
+    if (original.__isNew) {
+      nextRows[index] = { ...nextRows[index], ...payload, __isNew: false };
+    } else {
+      nextRows[index] = { ...nextRows[index], ...payload };
+    }
+    const cleanRows = nextRows.map(({__id,__isNew,...row}) => row);
+    const res = await fetch(`${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify({ data: cleanRows })
     });
     if (!res.ok) throw new Error(`Save failed (${res.status})`);
+    state.rows = nextRows;
     state.lastWriteAt = new Date();
     setConnectionState('connected', 'SheetDB: connected');
-    setSyncState('connected', `Last write succeeded for ${payload.Name || 'row'}`);
+    setSyncState('connected', `Saved full sheet · ${payload.Name || payload.Item || payload.ID}`);
     refreshStatusBar();
-    original.Name = payload.Name;
-    original.Item = payload.Item;
-    original.Bag = payload.Bag;
-    original.Status = payload.Status;
-    tr.querySelectorAll('.cell-input, .cell-select').forEach(el => el.dataset.dirty = 'false');
     renderAll();
-    toast('Row saved to sheet', 'success');
+    toast(original.__isNew ? 'Entry created in sheet' : 'Row saved to sheet', 'success');
   } catch (err) {
     setConnectionState('error', 'SheetDB: write error');
     setSyncState('error', `Write failed: ${err.message}`);
     refreshStatusBar();
     toast(`Save error: ${err.message}`, 'error');
-    controls.forEach(el => el.disabled = false);
-    setSaving(false);
-    return;
-  }
-  controls.forEach(el => el.disabled = false);
-  setSaving(false);
+  } finally { setSaving(false); }
 }
 
-function updateSortUI(panel) {
-  const sort = panel === 'inventory' ? state.inventorySort : state.editorSort;
-  document.querySelectorAll(`th[data-panel="${panel}"]`).forEach(th => {
-    th.classList.remove('asc', 'desc');
-    if (th.dataset.col === sort.col) th.classList.add(sort.dir);
-  });
+async function deleteRow(tr, original) {
+  const label = `${original.Name || '(blank)'} / ${original.Item || '(blank)'}`;
+  if (!confirm(`Delete this entry?\n\n${label}`)) return;
+  const nextRows = state.rows.filter(r => r.__id !== original.__id).map(r => ({ ...r }));
+  if (original.__isNew) { state.rows = nextRows; renderAll(); toast('Unsaved entry removed', 'info'); return; }
+  setSaving(true); disableRowControls(tr, true);
+  try {
+    const cleanRows = nextRows.map(({__id,__isNew,...row}) => row);
+    const res = await fetch(`${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify({ data: cleanRows }) });
+    if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+    state.rows = nextRows;
+    state.lastWriteAt = new Date();
+    setConnectionState('connected', 'SheetDB: connected');
+    setSyncState('connected', `Deleted row for ${original.Name || original.Item || original.ID}`);
+    refreshStatusBar();
+    renderAll();
+    toast('Row deleted from sheet', 'success');
+  } catch (err) {
+    setConnectionState('error', 'SheetDB: delete error'); setSyncState('error', `Delete failed: ${err.message}`); refreshStatusBar(); toast(`Delete error: ${err.message}`, 'error');
+  } finally { setSaving(false); }
 }
 
-function bindGlobalEvents() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-      state.activeTab = tab;
-      document.querySelectorAll('.tab-btn').forEach(node => {
-        const active = node.dataset.tab === tab;
-        node.classList.toggle('active', active);
-        node.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      document.querySelectorAll('.panel').forEach(node => node.classList.toggle('active', node.id === `panel-${tab}`));
+async function initializeMissingIds() {
+  const missing = state.rows.filter(r => !norm(r.ID));
+  if (!missing.length) { toast('All rows already have IDs', 'info'); return; }
+  if (!confirm(`Initialize IDs for ${missing.length} row(s)?\n\nThis will rewrite the sheet data with generated IDs using a bulk SheetDB write.`)) return;
+  setSaving(true);
+  try {
+    const nextRows = state.rows.map(r => ({ ...r, ID: norm(r.ID) || generateRowId() }));
+    const cleanRows = nextRows.map(({__id,__isNew,...row}) => row);
+    const res = await fetch(`${API_ROOT}?sheet=${encodeURIComponent(SHEET_NAME)}`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify({ data: cleanRows })
     });
-  });
+    if (!res.ok) throw new Error(`Initialize IDs failed (${res.status})`);
+    state.rows = nextRows;
+    state.lastWriteAt = new Date();
+    setConnectionState('connected', 'SheetDB: connected');
+    setSyncState('connected', `Initialized ${missing.length} missing ID${missing.length === 1 ? '' : 's'}`);
+    refreshStatusBar();
+    renderAll();
+    toast(`Initialized ${missing.length} row IDs`, 'success');
+  } catch (err) {
+    setConnectionState('error', 'SheetDB: initialization error');
+    setSyncState('error', `Initialize IDs failed: ${err.message}`);
+    refreshStatusBar();
+    toast(`Initialize IDs error: ${err.message}`, 'error');
+  } finally { setSaving(false); }
+}
 
-  document.getElementById('inventory-search').addEventListener('input', renderInventoryTable);
-  document.getElementById('editor-search').addEventListener('input', renderEditorTable);
-  document.getElementById('editor-status-filter').addEventListener('change', renderEditorTable);
-  document.getElementById('editor-person-filter').addEventListener('change', renderEditorTable);
+function addNewRow() { const nextId = state.rows.length ? Math.max(...state.rows.map(r => r.__id)) + 1 : 1; state.rows.unshift({ __id: nextId, __isNew: true, ID: generateRowId(), Type: 'gift', Name: '', Item: '', Bag: '', Status: 'not packed' }); document.getElementById('editor-type-filter').value = ''; document.getElementById('editor-status-filter').value = ''; document.getElementById('editor-search').value = ''; renderAll(); switchTab('editor'); toast('New entry added locally. Click Save to write it to the sheet.', 'info'); }
+function updateSortUI(panel) { const sort = state.sorts[panel]; document.querySelectorAll(`th[data-panel="${panel}"]`).forEach(th => { th.classList.remove('asc','desc'); if (th.dataset.col === sort.col) th.classList.add(sort.dir); }); }
+function switchTab(tab) { state.activeTab = tab; document.querySelectorAll('.tab-btn').forEach(node => node.classList.toggle('active', node.dataset.tab === tab)); document.querySelectorAll('.panel').forEach(node => node.classList.toggle('active', node.id === `panel-${tab}`)); }
+
+function bindEvents() {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
   document.getElementById('refresh-btn').addEventListener('click', loadData);
-
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const target = th.dataset.panel;
-      const sort = target === 'inventory' ? state.inventorySort : state.editorSort;
-      if (sort.col === th.dataset.col) sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
-      else { sort.col = th.dataset.col; sort.dir = 'asc'; }
-      if (target === 'inventory') renderInventoryTable(); else renderEditorTable();
-    });
-  });
+  document.getElementById('add-row-btn').addEventListener('click', addNewRow);
+  document.getElementById('init-ids-btn').addEventListener('click', initializeMissingIds);
+  document.getElementById('gift-inventory-search').addEventListener('input', () => renderInventory('gift'));
+  document.getElementById('personal-inventory-search').addEventListener('input', () => renderInventory('personal'));
+  document.getElementById('gift-status-search').addEventListener('input', () => renderStatusTable('gift'));
+  document.getElementById('personal-status-search').addEventListener('input', () => renderStatusTable('personal'));
+  document.getElementById('gift-status-filter').addEventListener('change', () => renderStatusTable('gift'));
+  document.getElementById('personal-status-filter').addEventListener('change', () => renderStatusTable('personal'));
+  document.getElementById('editor-search').addEventListener('input', renderEditorTable);
+  document.getElementById('editor-type-filter').addEventListener('change', renderEditorTable);
+  document.getElementById('editor-status-filter').addEventListener('change', renderEditorTable);
+  document.querySelectorAll('th.sortable').forEach(th => th.addEventListener('click', () => { const panel = th.dataset.panel; const sort = state.sorts[panel]; if (sort.col === th.dataset.col) sort.dir = sort.dir === 'asc' ? 'desc' : 'asc'; else { sort.col = th.dataset.col; sort.dir = 'asc'; } if (panel === 'gift-inventory') renderInventory('gift'); else if (panel === 'personal-inventory') renderInventory('personal'); else if (panel === 'gift-status') renderStatusTable('gift'); else if (panel === 'personal-status') renderStatusTable('personal'); else renderEditorTable(); }));
 }
 
-bindGlobalEvents();
+bindEvents();
 lucide.createIcons();
+setThemeButton(document.documentElement.getAttribute('data-theme'));
 setConnectionState('idle', 'SheetDB: idle');
 setSyncState('idle', 'Ready to load data');
 refreshStatusBar();
