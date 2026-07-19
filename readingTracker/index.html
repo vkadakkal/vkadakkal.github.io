@@ -1,1 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kunja Reading Tracker</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 10px; }
+    .container { max-width: 650px; margin: 0 auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+    
+    /* Tab Deck Navigation */
+    .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; gap: 4px; }
+    .tab-btn { flex: 1; padding: 12px 6px; background: none; border: none; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; text-align: center; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .tab-btn.active { color: #1e3a8a; border-bottom-color: #1e3a8a; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
+    /* Tab 1: Stats Dashboard Display Cards */
+    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px; margin-bottom: 12px; }
+    .stat-val { font-size: 26px; font-weight: 800; color: #1e3a8a; margin-top: 4px; }
+    .points-badge { display: inline-block; background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 13px; margin-top: 6px; }
+    
+    /* Gamified Progress Meters */
+    .milestone-container { margin-top: 14px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .progress-track { height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative; margin: 8px 0; }
+    .progress-bar { height: 100%; background: #3b82f6; width: 0%; transition: width 0.4s ease; }
+    .milestone-markers { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; font-weight: 600; }
+    .marker { padding: 2px 6px; border-radius: 4px; }
+    .marker.reached { background: #dcfce7; color: #15803d; }
+
+    /* Tab 2: Hyper-Compact Single Row Elements */
+    .add-trigger-btn { width: 100%; padding: 12px; background-color: #1e3a8a; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
+    .compact-row { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #f1f5f9; padding: 10px 4px; gap: 8px; }
+    .compact-info { flex: 1; min-width: 0; }
+    .compact-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; }
+    .compact-meta { font-size: 11px; color: #64748b; }
+    .compact-actions { display: flex; gap: 4px; shrink: 0; }
+    .mini-btn { padding: 6px 10px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .mini-btn.empty { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .mini-btn.done { background: #d1fae5; color: #065f46; font-weight: normal; pointer-events: none; border: 1px solid #a7f3d0; }
+    .mini-btn.reading { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+
+    /* Tab 3: Summary Workspace Fields */
+    .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; margin-bottom: 12px; }
+    .summary-title { font-weight: bold; font-size: 15px; color: #0f172a; margin-bottom: 6px; }
+    textarea { width: 100%; height: 75px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; resize: vertical; font-family: inherit; }
+    .summary-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    .word-counter { font-size: 12px; color: #64748b; }
+    .btn-save-summary { background: #10b981; color: white; padding: 6px 14px; font-size: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+
+    /* New Row Popdown Form Panel */
+    .new-book-panel { background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; display: none; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+    .form-group input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+    
+    .loading { text-align: center; color: #64748b; padding: 30px; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Tab System Toggle Headers -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(0)">📊 Stats Dashboard</button>
+    <button class="tab-btn" onclick="switchTab(1)">📚 Compact Log</button>
+    <button class="tab-btn" onclick="switchTab(2)">✍️ Viaan's Summaries</button>
+  </div>
+
+  <!-- TAB 1: PROGRESS DATA -->
+  <div id="tab0" class="tab-content active">
+    <div class="stat-card">
+      <label style="font-size: 13px; font-weight: bold; color: #64748b;">ALL-TIME PROGRESS</label>
+      <div class="stat-val" id="totalCumulativePages">0 pages</div>
+      <div class="points-badge" id="totalSummaryPoints">🏆 0 Total Summary Points</div>
+    </div>
+    <div id="yearlyBreakdownContainer"></div>
+  </div>
+
+  <!-- TAB 2: SINGLE-ROW LOG ENTRIES -->
+  <div id="tab1" class="tab-content">
+    <button class="add-trigger-btn" onclick="toggleAddPanel(true)">➕ Add New Book Title</button>
+    <div class="new-book-panel" id="newBookPanel">
+      <div class="form-group"><label>Book Title / Author</label><input type="text" id="title" placeholder="Title"></div>
+      <div class="form-group"><label>Total Pages</label><input type="number" id="pages" placeholder="Pages"></div>
+      <div style="display:flex; gap:6px;">
+        <button class="mini-btn" style="background:#64748b; color:white; flex:1;" onclick="toggleAddPanel(false)">Cancel</button>
+        <button class="mini-btn" style="background:#10b981; color:white; flex:2;" onclick="saveNewBook()">Save Row</button>
+      </div>
+    </div>
+    <div id="compactLogContainer" class="loading">Syncing Log files...</div>
+  </div>
+
+  <!-- TAB 3: LIVE REWARDS NOTEBOOK -->
+  <div id="tab2" class="tab-content">
+    <div id="summaryEditorContainer" class="loading">Opening Summary notebook...</div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ REPLACE THIS STRING WITH YOUR GENERATED SHEETDB API URL
+  const API_URL = "YOUR_SHEETDB_API_URL"; 
+  let localCache = [];
+
+  function switchTab(idx) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+    if (localCache.length > 0) processAndRender(localCache);
+  }
+
+  function toggleAddPanel(show) {
+    document.getElementById('newBookPanel').style.display = show ? 'block' : 'none';
+  }
+
+  function getTodayString() {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+  }
+
+  // Gamification Rules Engine: 10 points base + 5 points per word written
+  function calculatePoints(text) {
+    if (!text || !text.trim()) return 0;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    return words > 0 ? 10 + (words * 5) : 0;
+  }
+
+  function countWords(text) {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }
+
+  function fetchAllData() {
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        const formatted = data.map(row => ({
+          id: Number(row.No || 0),
+          year: row.Year || new Date().getFullYear(),
+          title: row.Title || "",
+          start: row.Start || "",
+          finish: row.Finish || "",
+          pages: row.Pages ? Number(row.Pages) : 0,
+          summary: row.Summary || ""
+        })).reverse(); // Invert mapping so new rows display at the top of the interface
+        processAndRender(formatted);
+      }).catch(err => {
+        document.getElementById('compactLogContainer').innerText = "Network sync fault. Confirm your SheetDB link endpoint configuration.";
+      });
+  }
+
+  function processAndRender(books) {
+    localCache = books;
+    
+    // TAB 1 (Dashboard Progress Engine)
+    let totalAllTime = 0, totalPoints = 0, yearlyMap = {};
+    books.forEach(b => {
+      totalAllTime += b.pages;
+      totalPoints += calculatePoints(b.summary);
+      if (!yearlyMap[b.year]) yearlyMap[b.year] = 0;
+      yearlyMap[b.year] += b.pages;
+    });
+
+    document.getElementById('totalCumulativePages').innerText = totalAllTime.toLocaleString() + " pages";
+    document.getElementById('totalSummaryPoints').innerText = `🏆 ${totalPoints.toLocaleString()} Viaan's Summary Points`;
+
+    const sortedYears = Object.keys(yearlyMap).sort().reverse();
+    document.getElementById('yearlyBreakdownContainer').innerHTML = sortedYears.map(yr => {
+      const pgs = yearlyMap[yr];
+      let pct = Math.min((pgs / 20000) * 100, 100);
+      return `
+        <div class="milestone-container">
+          <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;">
+            <span>📅 Year ${yr} Total</span>
+            <span style="color:#1e3a8a;">${pgs.toLocaleString()} / 20,000 pgs</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" style="width: ${pct}%"></div></div>
+          <div class="milestone-markers">
+            <span class="marker ${pgs >= 12000 ? 'reached' : ''}">🥉 Bronze (12k)</span>
+            <span class="marker ${pgs >= 16000 ? 'reached' : ''}">🥈 Silver (16k)</span>
+            <span class="marker ${pgs >= 20000 ? 'reached' : ''}">🥇 Gold (20k)</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    // TAB 2 (Compact Logging Rows)
+    document.getElementById('compactLogContainer').innerHTML = books.map(b => {
+      const hasStart = b.start && b.start.trim() !== "";
+      const hasFinish = b.finish && b.finish.trim() !== "";
+      const sBtn = hasStart ? `<button class="mini-btn reading" onclick="stampDate(${b.id}, 'Start')">${b.start.substring(0,6)}</button>` : `<button class="mini-btn empty" onclick="stampDate(${b.id}, 'Start')">⏱️ Start</button>`;
+      const fBtn = hasFinish ? `<button class="mini-btn done">${b.finish.substring(0,6)}</button>` : `<button class="mini-btn empty" onclick="stampDate(${b.id}, 'Finish')">✅ Finish</button>`;
+      return `
+        <div class="compact-row">
+          <div class="compact-info">
+            <div class="compact-title">${b.title || 'Untitled Row'}</div>
+            <div class="compact-meta">${b.pages} pgs | Yr: ${b.year}</div>
+          </div>
+          <div class="compact-actions">${sBtn}${fBtn}</div>
+        </div>`;
+    }).join('');
+
+    // TAB 3 (Notebook Editor)
+    document.getElementById('summaryEditorContainer').innerHTML = books.map(b => {
+      return `
+        <div class="summary-card">
+          <div class="summary-title">${b.title}</div>
+          <textarea id="sumText_${b.id}" oninput="updateLiveCounter(${b.id})" placeholder="Type summary content here...">${b.summary}</textarea>
+          <div class="summary-footer">
+            <div class="word-counter" id="countLabel_${b.id}">${countWords(b.summary)} words ✨ <strong>${calculatePoints(b.summary)} pts</strong></div>
+            <button class="btn-save-summary" id="saveBtn_${b.id}" onclick="saveSummary(${b.id})">Save Note</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function updateLiveCounter(id) {
+    const val = document.getElementById(`sumText_${id}`).value;
+    document.getElementById(`countLabel_${id}`).innerHTML = `${countWords(val)} words ✨ <strong>${calculatePoints(val)} pts</strong>`;
+  }
+
+  function saveNewBook() {
+    const titleVal = document.getElementById('title').value.trim();
+    const pagesVal = document.getElementById('pages').value.trim();
+    if (!titleVal) return alert('Book title missing.');
+    
+    const nextId = localCache.length > 0 ? Math.max(...localCache.map(b => b.id)) + 1 : 1;
+    toggleAddPanel(false);
+    document.getElementById('compactLogContainer').innerHTML = '<div class="loading">Appending row data...</div>';
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ data: [{ "No": nextId, "Year": new Date().getFullYear(), "Title": titleVal, "Pages": pagesVal, "Start": "", "Finish": "", "Summary": "" }] })
+    }).then(() => { 
+      document.getElementById('title').value = ''; 
+      document.getElementById('pages').value = ''; 
+      fetchAllData(); 
+    });
+  }
+
+  function stampDate(id, columnKey) {
+    const today = getTodayString();
+    let payload = {};
+    payload[columnKey] = today;
+
+    fetch(`${API_URL}/No/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ data: payload })
+    }).then(() => fetchAllData());
+  }
+
+  function saveSummary(id) {
+    const text = document.getElementById(`sumText_${id}`).value;
+    const btn = document.getElementById(`saveBtn_${id}`);
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
+    fetch(`${API_URL}/No/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ data: { "Summary": text } })
+    }).then(() => fetchAllData());
+  }
+
+  window.onload = fetchAllData;
+</script>
+</body>
+</html>
