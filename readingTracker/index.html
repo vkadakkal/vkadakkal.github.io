@@ -8,6 +8,10 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 10px; }
     .container { max-width: 650px; margin: 0 auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
     
+    /* Live Network Status Banner */
+    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
     /* Tab Deck Navigation */
     .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; gap: 4px; }
     .tab-btn { flex: 1; padding: 12px 6px; background: none; border: none; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; text-align: center; border-bottom: 3px solid transparent; transition: all 0.2s; }
@@ -59,6 +63,9 @@
 <body>
 
 <div class="container">
+  <!-- Status Alert Banner Deck -->
+  <div id="statusBanner" class="status-banner"></div>
+
   <!-- Tab System Toggle Headers -->
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab(0)">📊 Stats Dashboard</button>
@@ -100,8 +107,27 @@
   const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n"; 
   let localCache = [];
 
-  // Dynamic keys to map spreadsheet column syntax variations automatically
+  // Dynamic system keys configuration deck
   let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
+
+  function updateStatusBanner(msg, type) {
+    const banner = document.getElementById('statusBanner');
+    if (!msg) {
+      banner.style.display = 'none';
+      return;
+    }
+    banner.style.display = 'block';
+    banner.innerText = msg;
+    
+    if (type === 'sync') {
+      banner.style.backgroundColor = '#eff6ff'; banner.style.color = '#1e40af'; banner.style.border = '1px solid #bfdbfe';
+    } else if (type === 'success') {
+      banner.style.backgroundColor = '#ecfdf5'; banner.style.color = '#065f46'; banner.style.border = '1px solid #a7f3d0';
+      setTimeout(() => { banner.style.display = 'none'; }, 2500); // Dissolve bar after 2.5 seconds
+    } else if (type === 'fault') {
+      banner.style.backgroundColor = '#fef2f2'; banner.style.color = '#991b1b'; banner.style.border = '1px solid #fca5a5';
+    }
+  }
 
   function switchTab(idx) {
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -135,11 +161,11 @@
       .then(res => res.json())
       .then(data => {
         if (!Array.isArray(data) || data.length === 0) {
-          document.getElementById('compactLogContainer').innerText = "Spreadsheet is currently empty or unreadable.";
+          document.getElementById('compactLogContainer').innerText = "Spreadsheet sheet workspace is blank.";
           return;
         }
         
-        // Dynamic Key Discovered Logic — tolerates typos or modifications like "No." automatically
+        // Discover custom headers dynamically to account for format shifts
         const keys = Object.keys(data[0]);
         noKey = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "") === "no") || keys[0];
         yearKey = keys.find(k => k.toLowerCase() === "year") || "Year";
@@ -150,9 +176,10 @@
         summaryKey = keys.find(k => k.toLowerCase() === "summary") || "Summary";
 
         const formatted = data.map((row, idx) => {
-          const rawId = Number(row[noKey]);
+          const val = row[noKey];
+          const rawId = (val !== undefined && val !== null && val !== "") ? Number(val) : NaN;
           return {
-            id: isNaN(rawId) ? idx : rawId, // Safeguard fallback to loop row order if cell completely empty
+            id: isNaN(rawId) ? idx + 1 : rawId, 
             year: row[yearKey] || new Date().getFullYear(),
             title: row[titleKey] || "",
             start: row[startKey] || "",
@@ -164,21 +191,20 @@
         
         processAndRender(formatted);
       }).catch(err => {
-        document.getElementById('compactLogContainer').innerText = "Network sync fault. Confirm your SheetDB link endpoint configuration.";
+        updateStatusBanner("⚠️ Network Connection Fault. Confirm sheet configuration API permissions.", "fault");
       });
   }
 
   function processAndRender(books) {
     localCache = books;
     
-    // TAB 1 Engine (Only counts pages if finish date column field is valid)
+    // TAB 1 Engine (Excludes open items without finish marks)
     let totalAllTime = 0, totalPoints = 0, yearlyMap = {};
     books.forEach(b => {
       totalPoints += calculatePoints(b.summary);
       if (!yearlyMap[b.year]) yearlyMap[b.year] = 0;
       
-      const isFinished = b.finish && b.finish.trim() !== "";
-      if (isFinished) {
+      if (b.finish && b.finish.trim() !== "") {
         totalAllTime += b.pages;
         yearlyMap[b.year] += b.pages;
       }
@@ -262,7 +288,7 @@
     }
     
     toggleAddPanel(false);
-    document.getElementById('compactLogContainer').innerHTML = '<div class="loading">Adding row data...</div>';
+    updateStatusBanner("⚡ Appending new book row entry to Google Sheet...", "sync");
 
     let rowData = {};
     rowData[noKey] = nextId;
@@ -277,30 +303,40 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: [rowData] })
-    }).then(() => { 
+    }).then(res => {
+      if(!res.ok) throw new Error();
+      updateStatusBanner("✅ Book successfully added!", "success");
       document.getElementById('title').value = ''; 
       document.getElementById('pages').value = ''; 
       fetchAllData(); 
-    });
+    }).catch(() => updateStatusBanner("❌ Failed to add row. Verify sheet permissions.", "fault"));
   }
 
   function stampDate(id, targetColumnType) {
     if (id === undefined || id === null || isNaN(id)) {
-      alert("Error: Database validation index fault.");
+      updateStatusBanner("❌ Index matching ID is missing for this selection.", "fault");
       return;
     }
-    const today = getTodayString();
-    let payload = {};
     
-    // Choose correct operational key variable discovered on bootup
+    const today = getTodayString();
+    updateStatusBanner(`⚡ Logging ${targetColumnType} timestamp to sheet row...`, "sync");
+    
+    let payload = {};
     const operationalKey = (targetColumnType === 'Start') ? startKey : finishKey;
     payload[operationalKey] = today;
 
-    fetch(`${API_URL}/${noKey}/${id}`, {
+    // Fixed: URI components are safely wrapped to prevent double-slash breaking crashes
+    const patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
+
+    fetch(patchUrl, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: payload })
-    }).then(() => fetchAllData());
+    }).then(res => {
+      if(!res.ok) throw new Error();
+      updateStatusBanner(`✅ ${targetColumnType} date stamped successfully!`, "success");
+      fetchAllData();
+    }).catch(() => updateStatusBanner("❌ Sync failed. SheetDB could not match row context ID.", "fault"));
   }
 
   function saveSummary(id) {
@@ -308,15 +344,27 @@
     const btn = document.getElementById(`saveBtn_${id}`);
     btn.innerText = "Saving...";
     btn.disabled = true;
+    
+    updateStatusBanner("⚡ Saving notebook summary data to spreadsheet...", "sync");
 
     let payload = {};
     payload[summaryKey] = text;
 
-    fetch(`${API_URL}/${noKey}/${id}`, {
+    const patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
+
+    fetch(patchUrl, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: payload })
-    }).then(() => fetchAllData());
+    }).then(res => {
+      if(!res.ok) throw new Error();
+      updateStatusBanner("✅ Summary notes saved!", "success");
+      fetchAllData();
+    }).catch(() => {
+      updateStatusBanner("❌ Summary save failed.", "fault");
+      btn.innerText = "Save Note";
+      btn.disabled = false;
+    });
   }
 
   window.onload = fetchAllData;
