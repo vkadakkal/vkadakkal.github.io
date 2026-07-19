@@ -9,7 +9,7 @@
     .container { max-width: 650px; margin: 0 auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
     
     /* Live Network Status Banner */
-    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; line-height: 1.4; }
+    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; line-height: 1.4; word-break: break-word; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
     /* Tab Deck Navigation */
@@ -102,7 +102,6 @@
   const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n"; 
   let localCache = [];
 
-  // Core system structural key trackers
   let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
   let hasValidNoKey = false;
 
@@ -152,6 +151,18 @@
     return text.trim().split(/\s+/).filter(w => w.length > 0).length;
   }
 
+  function handleServerError(res) {
+    if (!res.ok) {
+      return res.json().then(errBody => {
+        let errMsg = errBody.error || errBody.message || `HTTP error ${res.status}`;
+        throw new Error(errMsg);
+      }).catch(() => {
+        throw new Error(`Server returned status code ${res.status}`);
+      });
+    }
+    return res.json();
+  }
+
   function fetchAllData() {
     fetch(API_URL)
       .then(res => res.json())
@@ -162,8 +173,6 @@
         }
         
         const keys = Object.keys(data[0]);
-        
-        // Upgraded Loose Discovery Tracker Layout with Index Fallbacks
         const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "").includes("no"));
         if (foundNo) {
           noKey = foundNo;
@@ -178,11 +187,8 @@
         startKey = keys.find(k => k.toLowerCase().includes("start")) || keys[3] || "Start";
         finishKey = keys.find(k => k.toLowerCase().includes("finish")) || keys[4] || "Finish";
         pagesKey = keys.find(k => k.toLowerCase().includes("page")) || keys[5] || "Pages";
-        
-        // Grabs the column if it contains "summar" or "note", falling back to the 7th column slot directly
         summaryKey = keys.find(k => k.toLowerCase().includes("summar")) || keys.find(k => k.toLowerCase().includes("note")) || keys[6] || "Summary";
 
-        // Discards operational header duplications dynamically
         const cleanRows = data.filter(row => row[titleKey] !== "Title" && row[titleKey] !== "");
 
         const formatted = cleanRows.map((row, idx) => {
@@ -201,7 +207,6 @@
         
         processAndRender(formatted);
       }).catch(err => {
-        console.error(err);
         updateStatusBanner("⚠️ Connection Fault. Verify endpoint API visibility.", "fault");
       });
   }
@@ -314,15 +319,15 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: [rowData] })
-    }).then(res => {
-      if(!res.ok) throw new Error();
+    })
+    .then(handleServerError)
+    .then(() => {
       updateStatusBanner("✅ Book successfully added!", "success");
       document.getElementById('title').value = ''; 
       document.getElementById('pages').value = ''; 
       fetchAllData(); 
     }).catch(err => {
-      console.error(err);
-      updateStatusBanner("❌ Failed to add row. Verify sheet configurations.", "fault");
+      updateStatusBanner(`❌ Save Error: ${err.message}`, "fault");
     });
   }
 
@@ -345,28 +350,28 @@
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: payload })
-    }).then(res => {
-      if(!res.ok) throw new Error();
+    })
+    .then(handleServerError)
+    .then(() => {
       updateStatusBanner(`✅ ${targetColumnType} date stamped successfully!`, "success");
       fetchAllData();
     }).catch(err => {
-      console.error(err);
       if (hasValidNoKey) {
         const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
         fetch(fallbackUrl, {
           method: 'PATCH',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ data: payload })
-        }).then(r => {
-          if(!r.ok) throw new Error();
+        })
+        .then(handleServerError)
+        .then(() => {
           updateStatusBanner(`✅ ${targetColumnType} date stamped via fallback matching!`, "success");
           fetchAllData();
-        }).catch(e => {
-          console.error(e);
-          updateStatusBanner("❌ Sync failed. SheetDB key index mismatch.", "fault");
+        }).catch(fallbackErr => {
+          updateStatusBanner(`❌ Sync failed: ${fallbackErr.message}`, "fault");
         });
       } else {
-        updateStatusBanner("❌ Sync failed. Check SheetDB row configuration keys.", "fault");
+        updateStatusBanner(`❌ Sync failed: ${err.message}`, "fault");
       }
     });
   }
@@ -393,28 +398,28 @@
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: payload })
-    }).then(res => {
-      if(!res.ok) throw new Error();
+    })
+    .then(handleServerError)
+    .then(() => {
       updateStatusBanner("✅ Summary notes saved!", "success");
       btn.innerText = "Save Note";
       btn.disabled = false;
       fetchAllData();
     }).catch(err => {
-      console.error(err);
       const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
       fetch(fallbackUrl, {
         method: 'PATCH',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ data: payload })
-      }).then(r => {
-        if(!r.ok) throw new Error();
+      })
+      .then(handleServerError)
+      .then(() => {
         updateStatusBanner("✅ Summary saved via fallback query!", "success");
         btn.innerText = "Save Note";
         btn.disabled = false;
         fetchAllData();
-      }).catch(e => {
-        console.error(e);
-        updateStatusBanner("❌ Summary save failed. Column header configuration mismatch.", "fault");
+      }).catch(fallbackErr => {
+        updateStatusBanner(`❌ SheetDB Error: ${fallbackErr.message}`, "fault");
         btn.innerText = "Save Note";
         btn.disabled = false;
       });
