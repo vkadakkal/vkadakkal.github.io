@@ -9,7 +9,7 @@
     .container { max-width: 650px; margin: 0 auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
     
     /* Live Network Status Banner */
-    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; }
+    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; line-height: 1.4; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
     /* Tab Deck Navigation */
@@ -107,8 +107,9 @@
   const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n"; 
   let localCache = [];
 
-  // Dynamic system keys configuration deck
+  // Core system structural key trackers
   let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
+  let hasValidNoKey = false;
 
   function updateStatusBanner(msg, type) {
     const banner = document.getElementById('statusBanner');
@@ -123,7 +124,7 @@
       banner.style.backgroundColor = '#eff6ff'; banner.style.color = '#1e40af'; banner.style.border = '1px solid #bfdbfe';
     } else if (type === 'success') {
       banner.style.backgroundColor = '#ecfdf5'; banner.style.color = '#065f46'; banner.style.border = '1px solid #a7f3d0';
-      setTimeout(() => { banner.style.display = 'none'; }, 2500); // Dissolve bar after 2.5 seconds
+      setTimeout(() => { banner.style.display = 'none'; }, 2500);
     } else if (type === 'fault') {
       banner.style.backgroundColor = '#fef2f2'; banner.style.color = '#991b1b'; banner.style.border = '1px solid #fca5a5';
     }
@@ -161,13 +162,23 @@
       .then(res => res.json())
       .then(data => {
         if (!Array.isArray(data) || data.length === 0) {
-          document.getElementById('compactLogContainer').innerText = "Spreadsheet sheet workspace is blank.";
+          document.getElementById('compactLogContainer').innerText = "Spreadsheet workspace empty.";
           return;
         }
         
-        // Discover custom headers dynamically to account for format shifts
+        // Scan headers and look for structural shifts
         const keys = Object.keys(data[0]);
-        noKey = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "") === "no") || keys[0];
+        
+        // Check if there's an explicit column intended for "No"
+        const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "") === "no");
+        if (foundNo) {
+          noKey = foundNo;
+          hasValidNoKey = true;
+        } else {
+          noKey = keys[0]; // Fallback label assignment
+          hasValidNoKey = false; 
+        }
+
         yearKey = keys.find(k => k.toLowerCase() === "year") || "Year";
         titleKey = keys.find(k => k.toLowerCase() === "title") || "Title";
         startKey = keys.find(k => k.toLowerCase() === "start") || "Start";
@@ -175,13 +186,16 @@
         pagesKey = keys.find(k => k.toLowerCase() === "pages") || "Pages";
         summaryKey = keys.find(k => k.toLowerCase() === "summary") || "Summary";
 
-        const formatted = data.map((row, idx) => {
+        // Filter out row 1 if it's acting as an accidental header duplicate text line
+        const cleanRows = data.filter(row => row[titleKey] !== "Title" && row[titleKey] !== "");
+
+        const formatted = cleanRows.map((row, idx) => {
           const val = row[noKey];
           const rawId = (val !== undefined && val !== null && val !== "") ? Number(val) : NaN;
           return {
             id: isNaN(rawId) ? idx + 1 : rawId, 
             year: row[yearKey] || new Date().getFullYear(),
-            title: row[titleKey] || "",
+            title: row[titleKey] || "Untitled Book",
             start: row[startKey] || "",
             finish: row[finishKey] || "",
             pages: row[pagesKey] ? Number(row[pagesKey]) : 0,
@@ -191,14 +205,14 @@
         
         processAndRender(formatted);
       }).catch(err => {
-        updateStatusBanner("⚠️ Network Connection Fault. Confirm sheet configuration API permissions.", "fault");
+        updateStatusBanner("⚠️ Connection Fault. Verify endpoint API visibility.", "fault");
       });
   }
 
   function processAndRender(books) {
     localCache = books;
     
-    // TAB 1 Engine (Excludes open items without finish marks)
+    // TAB 1 Engine
     let totalAllTime = 0, totalPoints = 0, yearlyMap = {};
     books.forEach(b => {
       totalPoints += calculatePoints(b.summary);
@@ -248,7 +262,7 @@
       return `
         <div class="compact-row">
           <div class="compact-info">
-            <div class="compact-title">${b.title || 'Untitled Book'}</div>
+            <div class="compact-title">${b.title}</div>
             <div class="compact-meta">${b.pages} pgs | Yr: ${b.year}</div>
           </div>
           <div class="compact-actions">${sBtn}${fBtn}</div>
@@ -309,15 +323,13 @@
       document.getElementById('title').value = ''; 
       document.getElementById('pages').value = ''; 
       fetchAllData(); 
-    }).catch(() => updateStatusBanner("❌ Failed to add row. Verify sheet permissions.", "fault"));
+    }).catch(() => updateStatusBanner("❌ Failed to add row. Verify sheet configurations.", "fault"));
   }
 
   function stampDate(id, targetColumnType) {
-    if (id === undefined || id === null || isNaN(id)) {
-      updateStatusBanner("❌ Index matching ID is missing for this selection.", "fault");
-      return;
-    }
-    
+    const book = localCache.find(b => b.id === id);
+    if (!book) return;
+
     const today = getTodayString();
     updateStatusBanner(`⚡ Logging ${targetColumnType} timestamp to sheet row...`, "sync");
     
@@ -325,8 +337,13 @@
     const operationalKey = (targetColumnType === 'Start') ? startKey : finishKey;
     payload[operationalKey] = today;
 
-    // Fixed: URI components are safely wrapped to prevent double-slash breaking crashes
-    const patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
+    // Smart Fallback Routing Logic: Use Title matching if 'No' header index tracking fails
+    let patchUrl = "";
+    if (hasValidNoKey) {
+      patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
+    } else {
+      patchUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+    }
 
     fetch(patchUrl, {
       method: 'PATCH',
@@ -336,10 +353,29 @@
       if(!res.ok) throw new Error();
       updateStatusBanner(`✅ ${targetColumnType} date stamped successfully!`, "success");
       fetchAllData();
-    }).catch(() => updateStatusBanner("❌ Sync failed. SheetDB could not match row context ID.", "fault"));
+    }).catch(() => {
+      // Final resilient backup execution loop: try matching via Title if No tracking threw an error
+      if (hasValidNoKey) {
+        const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+        fetch(fallbackUrl, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ data: payload })
+        }).then(r => {
+          if(!r.ok) throw new Error();
+          updateStatusBanner(`✅ ${targetColumnType} date stamped via fallback matching!`, "success");
+          fetchAllData();
+        }).catch(() => updateStatusBanner("❌ Sync failed. SheetDB key index mismatch.", "fault"));
+      } else {
+        updateStatusBanner("❌ Sync failed. Check SheetDB row configuration keys.", "fault");
+      }
+    });
   }
 
   function saveSummary(id) {
+    const book = localCache.find(b => b.id === id);
+    if (!book) return;
+
     const text = document.getElementById(`sumText_${id}`).value;
     const btn = document.getElementById(`saveBtn_${id}`);
     btn.innerText = "Saving...";
@@ -350,7 +386,9 @@
     let payload = {};
     payload[summaryKey] = text;
 
-    const patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
+    let patchUrl = hasValidNoKey 
+      ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`
+      : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
 
     fetch(patchUrl, {
       method: 'PATCH',
@@ -361,9 +399,20 @@
       updateStatusBanner("✅ Summary notes saved!", "success");
       fetchAllData();
     }).catch(() => {
-      updateStatusBanner("❌ Summary save failed.", "fault");
-      btn.innerText = "Save Note";
-      btn.disabled = false;
+      const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+      fetch(fallbackUrl, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ data: payload })
+      }).then(r => {
+        if(!r.ok) throw new Error();
+        updateStatusBanner("✅ Summary saved via title fallback!", "success");
+        fetchAllData();
+      }).catch(() => {
+        updateStatusBanner("❌ Summary save failed.", "fault");
+        btn.innerText = "Save Note";
+        btn.disabled = false;
+      });
     });
   }
 
