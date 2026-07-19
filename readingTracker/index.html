@@ -63,17 +63,14 @@
 <body>
 
 <div class="container">
-  <!-- Status Alert Banner Deck -->
   <div id="statusBanner" class="status-banner"></div>
 
-  <!-- Tab System Toggle Headers -->
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab(0)">📊 Stats Dashboard</button>
     <button class="tab-btn" onclick="switchTab(1)">📚 Compact Log</button>
     <button class="tab-btn" onclick="switchTab(2)">✍️ Viaan's Summaries</button>
   </div>
 
-  <!-- TAB 1: PROGRESS DATA -->
   <div id="tab0" class="tab-content active">
     <div class="stat-card">
       <label style="font-size: 13px; font-weight: bold; color: #64748b;">ALL-TIME PROGRESS (FINISHED BOOKS ONLY)</label>
@@ -83,7 +80,6 @@
     <div id="yearlyBreakdownContainer"></div>
   </div>
 
-  <!-- TAB 2: SINGLE-ROW LOG ENTRIES -->
   <div id="tab1" class="tab-content">
     <button class="add-trigger-btn" onclick="toggleAddPanel(true)">➕ Add New Book Title</button>
     <div class="new-book-panel" id="newBookPanel">
@@ -97,7 +93,6 @@
     <div id="compactLogContainer" class="loading">Syncing Log files...</div>
   </div>
 
-  <!-- TAB 3: LIVE REWARDS NOTEBOOK -->
   <div id="tab2" class="tab-content">
     <div id="summaryEditorContainer" class="loading">Opening Summary notebook...</div>
   </div>
@@ -162,31 +157,32 @@
       .then(res => res.json())
       .then(data => {
         if (!Array.isArray(data) || data.length === 0) {
-          document.getElementById('compactLogContainer').innerText = "Spreadsheet workspace empty.";
+          document.getElementById('compactLogContainer').innerText = "Spreadsheet workspace is blank.";
           return;
         }
         
-        // Scan headers and look for structural shifts
         const keys = Object.keys(data[0]);
         
-        // Check if there's an explicit column intended for "No"
-        const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "") === "no");
+        // Upgraded Loose Discovery Tracker Layout with Index Fallbacks
+        const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "").includes("no"));
         if (foundNo) {
           noKey = foundNo;
           hasValidNoKey = true;
         } else {
-          noKey = keys[0]; // Fallback label assignment
+          noKey = keys[0];
           hasValidNoKey = false; 
         }
 
-        yearKey = keys.find(k => k.toLowerCase() === "year") || "Year";
-        titleKey = keys.find(k => k.toLowerCase() === "title") || "Title";
-        startKey = keys.find(k => k.toLowerCase() === "start") || "Start";
-        finishKey = keys.find(k => k.toLowerCase() === "finish") || "Finish";
-        pagesKey = keys.find(k => k.toLowerCase() === "pages") || "Pages";
-        summaryKey = keys.find(k => k.toLowerCase() === "summary") || "Summary";
+        yearKey = keys.find(k => k.toLowerCase().includes("year")) || keys[1] || "Year";
+        titleKey = keys.find(k => k.toLowerCase().includes("title")) || keys[2] || "Title";
+        startKey = keys.find(k => k.toLowerCase().includes("start")) || keys[3] || "Start";
+        finishKey = keys.find(k => k.toLowerCase().includes("finish")) || keys[4] || "Finish";
+        pagesKey = keys.find(k => k.toLowerCase().includes("page")) || keys[5] || "Pages";
+        
+        // Grabs the column if it contains "summar" or "note", falling back to the 7th column slot directly
+        summaryKey = keys.find(k => k.toLowerCase().includes("summar")) || keys.find(k => k.toLowerCase().includes("note")) || keys[6] || "Summary";
 
-        // Filter out row 1 if it's acting as an accidental header duplicate text line
+        // Discards operational header duplications dynamically
         const cleanRows = data.filter(row => row[titleKey] !== "Title" && row[titleKey] !== "");
 
         const formatted = cleanRows.map((row, idx) => {
@@ -205,6 +201,7 @@
         
         processAndRender(formatted);
       }).catch(err => {
+        console.error(err);
         updateStatusBanner("⚠️ Connection Fault. Verify endpoint API visibility.", "fault");
       });
   }
@@ -323,7 +320,10 @@
       document.getElementById('title').value = ''; 
       document.getElementById('pages').value = ''; 
       fetchAllData(); 
-    }).catch(() => updateStatusBanner("❌ Failed to add row. Verify sheet configurations.", "fault"));
+    }).catch(err => {
+      console.error(err);
+      updateStatusBanner("❌ Failed to add row. Verify sheet configurations.", "fault");
+    });
   }
 
   function stampDate(id, targetColumnType) {
@@ -337,13 +337,9 @@
     const operationalKey = (targetColumnType === 'Start') ? startKey : finishKey;
     payload[operationalKey] = today;
 
-    // Smart Fallback Routing Logic: Use Title matching if 'No' header index tracking fails
-    let patchUrl = "";
-    if (hasValidNoKey) {
-      patchUrl = `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`;
-    } else {
-      patchUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
-    }
+    let patchUrl = hasValidNoKey 
+      ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`
+      : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
 
     fetch(patchUrl, {
       method: 'PATCH',
@@ -353,8 +349,8 @@
       if(!res.ok) throw new Error();
       updateStatusBanner(`✅ ${targetColumnType} date stamped successfully!`, "success");
       fetchAllData();
-    }).catch(() => {
-      // Final resilient backup execution loop: try matching via Title if No tracking threw an error
+    }).catch(err => {
+      console.error(err);
       if (hasValidNoKey) {
         const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
         fetch(fallbackUrl, {
@@ -365,7 +361,10 @@
           if(!r.ok) throw new Error();
           updateStatusBanner(`✅ ${targetColumnType} date stamped via fallback matching!`, "success");
           fetchAllData();
-        }).catch(() => updateStatusBanner("❌ Sync failed. SheetDB key index mismatch.", "fault"));
+        }).catch(e => {
+          console.error(e);
+          updateStatusBanner("❌ Sync failed. SheetDB key index mismatch.", "fault");
+        });
       } else {
         updateStatusBanner("❌ Sync failed. Check SheetDB row configuration keys.", "fault");
       }
@@ -397,8 +396,11 @@
     }).then(res => {
       if(!res.ok) throw new Error();
       updateStatusBanner("✅ Summary notes saved!", "success");
+      btn.innerText = "Save Note";
+      btn.disabled = false;
       fetchAllData();
-    }).catch(() => {
+    }).catch(err => {
+      console.error(err);
       const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
       fetch(fallbackUrl, {
         method: 'PATCH',
@@ -406,10 +408,13 @@
         body: JSON.stringify({ data: payload })
       }).then(r => {
         if(!r.ok) throw new Error();
-        updateStatusBanner("✅ Summary saved via title fallback!", "success");
+        updateStatusBanner("✅ Summary saved via fallback query!", "success");
+        btn.innerText = "Save Note";
+        btn.disabled = false;
         fetchAllData();
-      }).catch(() => {
-        updateStatusBanner("❌ Summary save failed.", "fault");
+      }).catch(e => {
+        console.error(e);
+        updateStatusBanner("❌ Summary save failed. Column header configuration mismatch.", "fault");
         btn.innerText = "Save Note";
         btn.disabled = false;
       });
