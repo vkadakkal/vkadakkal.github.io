@@ -100,6 +100,9 @@
   const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n"; 
   let localCache = [];
 
+  // Dynamic keys to map spreadsheet column syntax variations automatically
+  let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
+
   function switchTab(idx) {
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
     document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
@@ -131,18 +134,31 @@
     fetch(API_URL)
       .then(res => res.json())
       .then(data => {
-        if (!Array.isArray(data)) return;
+        if (!Array.isArray(data) || data.length === 0) {
+          document.getElementById('compactLogContainer').innerText = "Spreadsheet is currently empty or unreadable.";
+          return;
+        }
         
-        const formatted = data.map(row => {
-          const rawId = Number(row.No);
+        // Dynamic Key Discovered Logic — tolerates typos or modifications like "No." automatically
+        const keys = Object.keys(data[0]);
+        noKey = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "") === "no") || keys[0];
+        yearKey = keys.find(k => k.toLowerCase() === "year") || "Year";
+        titleKey = keys.find(k => k.toLowerCase() === "title") || "Title";
+        startKey = keys.find(k => k.toLowerCase() === "start") || "Start";
+        finishKey = keys.find(k => k.toLowerCase() === "finish") || "Finish";
+        pagesKey = keys.find(k => k.toLowerCase() === "pages") || "Pages";
+        summaryKey = keys.find(k => k.toLowerCase() === "summary") || "Summary";
+
+        const formatted = data.map((row, idx) => {
+          const rawId = Number(row[noKey]);
           return {
-            id: isNaN(rawId) ? 0 : rawId,
-            year: row.Year || new Date().getFullYear(),
-            title: row.Title || "",
-            start: row.Start || "",
-            finish: row.Finish || "",
-            pages: row.Pages ? Number(row.Pages) : 0,
-            summary: row.Summary || ""
+            id: isNaN(rawId) ? idx : rawId, // Safeguard fallback to loop row order if cell completely empty
+            year: row[yearKey] || new Date().getFullYear(),
+            title: row[titleKey] || "",
+            start: row[startKey] || "",
+            finish: row[finishKey] || "",
+            pages: row[pagesKey] ? Number(row[pagesKey]) : 0,
+            summary: row[summaryKey] || ""
           };
         }).reverse(); 
         
@@ -155,11 +171,10 @@
   function processAndRender(books) {
     localCache = books;
     
-    // TAB 1 Engine (Only sums page tallies if the book has a finish date)
+    // TAB 1 Engine (Only counts pages if finish date column field is valid)
     let totalAllTime = 0, totalPoints = 0, yearlyMap = {};
     books.forEach(b => {
       totalPoints += calculatePoints(b.summary);
-      
       if (!yearlyMap[b.year]) yearlyMap[b.year] = 0;
       
       const isFinished = b.finish && b.finish.trim() !== "";
@@ -249,10 +264,19 @@
     toggleAddPanel(false);
     document.getElementById('compactLogContainer').innerHTML = '<div class="loading">Adding row data...</div>';
 
+    let rowData = {};
+    rowData[noKey] = nextId;
+    rowData[yearKey] = new Date().getFullYear();
+    rowData[titleKey] = titleVal;
+    rowData[pagesKey] = pagesVal;
+    rowData[startKey] = "";
+    rowData[finishKey] = "";
+    rowData[summaryKey] = "";
+
     fetch(API_URL, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ data: [{ "No": nextId, "Year": new Date().getFullYear(), "Title": titleVal, "Pages": pagesVal, "Start": "", "Finish": "", "Summary": "" }] })
+      body: JSON.stringify({ data: [rowData] })
     }).then(() => { 
       document.getElementById('title').value = ''; 
       document.getElementById('pages').value = ''; 
@@ -260,16 +284,19 @@
     });
   }
 
-  function stampDate(id, columnKey) {
-    if (!id || isNaN(id)) {
-      alert("Error: Missing database index ID for this row.");
+  function stampDate(id, targetColumnType) {
+    if (id === undefined || id === null || isNaN(id)) {
+      alert("Error: Database validation index fault.");
       return;
     }
     const today = getTodayString();
     let payload = {};
-    payload[columnKey] = today;
+    
+    // Choose correct operational key variable discovered on bootup
+    const operationalKey = (targetColumnType === 'Start') ? startKey : finishKey;
+    payload[operationalKey] = today;
 
-    fetch(`${API_URL}/No/${id}`, {
+    fetch(`${API_URL}/${noKey}/${id}`, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ data: payload })
@@ -282,10 +309,13 @@
     btn.innerText = "Saving...";
     btn.disabled = true;
 
-    fetch(`${API_URL}/No/${id}`, {
+    let payload = {};
+    payload[summaryKey] = text;
+
+    fetch(`${API_URL}/${noKey}/${id}`, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ data: { "Summary": text } })
+      body: JSON.stringify({ data: payload })
     }).then(() => fetchAllData());
   }
 
