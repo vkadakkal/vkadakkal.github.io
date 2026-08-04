@@ -415,6 +415,47 @@
     }
     .word-counter { font-size: var(--text-sm); color: var(--color-text-muted); }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(18, 16, 13, 0.46);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      z-index: 40;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: min(760px, 100%);
+      max-height: min(88dvh, 900px);
+      overflow: auto;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 24px;
+      box-shadow: var(--shadow-lg);
+      padding: var(--space-5);
+    }
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+    .modal-title {
+      margin: 0;
+      font-size: var(--text-lg);
+      line-height: 1.15;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      flex-wrap: wrap;
+    }
+
     .empty-state, .loading {
       background: var(--color-surface);
       border: 1px dashed var(--color-border);
@@ -454,11 +495,12 @@
       .span-6, .span-4, .span-3, .span-12 { grid-column: span 1; }
       .chip-row { gap: 0.45rem; }
       .tab-btn { width: 100%; }
-      .summary-footer, .summary-head, .row-between { align-items: flex-start; }
+      .summary-footer, .summary-head, .row-between, .modal-header { align-items: flex-start; }
       .stamp-stack { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
       .stamp-btn { width: 100%; min-width: 0; }
       .row-tools { width: 100%; }
       .row-tools .btn { flex: 1; }
+      .modal-actions .btn { flex: 1; }
       .big-stat { min-height: auto; }
     }
 
@@ -609,15 +651,61 @@
     </div>
   </div>
 
+  <div id="editModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="editModalTitle" class="modal-title">Edit book</h2>
+          <p class="panel-subtitle">Update every field here, including start and finish dates.</p>
+        </div>
+        <button class="icon-btn" type="button" onclick="closeEditModal()" aria-label="Close edit dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="field span-6">
+          <label for="editTitle">Book title / author</label>
+          <input type="text" id="editTitle" placeholder="Title / Author">
+        </div>
+        <div class="field span-3">
+          <label for="editPages">Total pages</label>
+          <input type="number" id="editPages" min="0" placeholder="Pages">
+        </div>
+        <div class="field span-3">
+          <label for="editYear">Year</label>
+          <input type="number" id="editYear" min="2000" max="2099" placeholder="2026">
+        </div>
+        <div class="field span-6">
+          <label for="editStart">Start date</label>
+          <input type="date" id="editStart">
+        </div>
+        <div class="field span-6">
+          <label for="editFinish">Finish date</label>
+          <input type="date" id="editFinish">
+        </div>
+        <div class="field span-12">
+          <label for="editSummary">Summary</label>
+          <textarea id="editSummary" placeholder="Write or edit the summary here…"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" onclick="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" id="editSaveBtn" type="button" onclick="saveEditModal()">Save changes</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n";
     let localCache = [];
     let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
     let hasValidNoKey = false;
     let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    let editingBookId = null;
 
     const banner = document.getElementById('statusBanner');
     const themeToggle = document.querySelector('[data-theme-toggle]');
+    const editModal = document.getElementById('editModal');
 
     function applyTheme(theme) {
       currentTheme = theme;
@@ -666,6 +754,25 @@
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const d = new Date();
       return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+    }
+
+    function toInputDate(dateStr) {
+      if (!dateStr) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      const match = String(dateStr).trim().match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
+      if (!match) return '';
+      const monthMap = { Jan:'01', Feb:'02', Mar:'03', Apr:'04', May:'05', Jun:'06', Jul:'07', Aug:'08', Sep:'09', Oct:'10', Nov:'11', Dec:'12' };
+      const [, dd, mon, yyyy] = match;
+      return `${yyyy}-${monthMap[mon] || '01'}-${dd}`;
+    }
+
+    function fromInputDate(dateStr) {
+      if (!dateStr) return '';
+      const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return '';
+      const monthMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const [, yyyy, mm, dd] = match;
+      return `${dd}-${monthMap[Number(mm) - 1]}-${yyyy}`;
     }
 
     function calculatePoints(text) {
@@ -964,6 +1071,7 @@
       const operationalKey = targetColumnType === 'Start' ? startKey : finishKey;
       const today = getTodayString();
       const originalValue = targetColumnType === 'Start' ? book.start : book.finish;
+      const previousStart = book.start;
       if (targetColumnType === 'Start') book.start = today;
       if (targetColumnType === 'Finish') {
         if (!book.start) book.start = today;
@@ -974,7 +1082,7 @@
 
       const payload = {};
       payload[operationalKey] = today;
-      if (targetColumnType === 'Finish' && !originalValue && !book.start) payload[startKey] = today;
+      if (targetColumnType === 'Finish' && !previousStart) payload[startKey] = book.start;
 
       fetch(buildPatchUrl(book), {
         method: 'PATCH',
@@ -988,7 +1096,10 @@
       })
       .catch(err => {
         if (targetColumnType === 'Start') book.start = originalValue;
-        if (targetColumnType === 'Finish') book.finish = originalValue;
+        if (targetColumnType === 'Finish') {
+          book.finish = originalValue;
+          book.start = previousStart;
+        }
         renderAll();
         updateStatusBanner(`Date save failed: ${err.message}`, 'fault');
       });
@@ -1064,30 +1175,69 @@
     function editBook(id) {
       const book = localCache.find(b => b.id === id);
       if (!book) return;
-      const nextTitle = window.prompt('Edit book title / author', book.title);
-      if (nextTitle === null) return;
-      const nextPages = window.prompt('Edit total pages', book.pages);
-      if (nextPages === null) return;
-      const nextYear = window.prompt('Edit year', book.year);
-      if (nextYear === null) return;
+      editingBookId = id;
+      document.getElementById('editTitle').value = book.title || '';
+      document.getElementById('editPages').value = book.pages || 0;
+      document.getElementById('editYear').value = book.year || new Date().getFullYear();
+      document.getElementById('editStart').value = toInputDate(book.start);
+      document.getElementById('editFinish').value = toInputDate(book.finish);
+      document.getElementById('editSummary').value = book.summary || '';
+      editModal.classList.add('open');
+      editModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('editTitle').focus();
+    }
 
-      const trimmedTitle = nextTitle.trim();
-      if (!trimmedTitle) {
+    function closeEditModal() {
+      editModal.classList.remove('open');
+      editModal.setAttribute('aria-hidden', 'true');
+      editingBookId = null;
+      document.getElementById('editSaveBtn').disabled = false;
+      document.getElementById('editSaveBtn').textContent = 'Save changes';
+    }
+
+    function saveEditModal() {
+      const book = localCache.find(b => b.id === editingBookId);
+      if (!book) return;
+
+      const nextTitle = document.getElementById('editTitle').value.trim();
+      const nextPages = Number(document.getElementById('editPages').value || 0);
+      const nextYear = String(document.getElementById('editYear').value || new Date().getFullYear());
+      const editStartRaw = document.getElementById('editStart').value;
+      const editFinishRaw = document.getElementById('editFinish').value;
+      const nextStart = fromInputDate(editStartRaw);
+      const nextFinish = fromInputDate(editFinishRaw);
+      const nextSummary = document.getElementById('editSummary').value;
+
+      if (!nextTitle) {
         alert('Title cannot be empty.');
+        return;
+      }
+      if (editStartRaw && editFinishRaw && editStartRaw > editFinishRaw) {
+        alert('Finish date cannot be earlier than start date.');
         return;
       }
 
       const original = { ...book };
-      book.title = trimmedTitle;
-      book.pages = Number(nextPages) || 0;
-      book.year = String(nextYear || book.year);
+      book.title = nextTitle;
+      book.pages = nextPages;
+      book.year = nextYear;
+      book.start = nextStart;
+      book.finish = nextFinish;
+      book.summary = nextSummary;
       renderAll();
       updateStatusBanner('Saving book edits…', 'sync');
+
+      const saveBtn = document.getElementById('editSaveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
 
       const payload = {};
       payload[titleKey] = book.title;
       payload[pagesKey] = book.pages;
       payload[yearKey] = book.year;
+      payload[startKey] = book.start;
+      payload[finishKey] = book.finish;
+      payload[summaryKey] = book.summary;
 
       fetch(buildPatchUrl(original), {
         method: 'PATCH',
@@ -1096,11 +1246,16 @@
       })
       .then(handleServerError)
       .then(() => {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save changes';
+        closeEditModal();
         updateStatusBanner('Book updated.', 'success');
         fetchAllData(false);
       })
       .catch(err => {
         Object.assign(book, original);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save changes';
         renderAll();
         updateStatusBanner(`Edit failed: ${err.message}`, 'fault');
       });
@@ -1128,6 +1283,14 @@
           updateStatusBanner(`Delete failed: ${err.message}`, 'fault');
         });
     }
+
+    editModal.addEventListener('click', (event) => {
+      if (event.target === editModal) closeEditModal();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && editModal.classList.contains('open')) closeEditModal();
+    });
 
     window.onload = () => {
       document.getElementById('yearInput').value = new Date().getFullYear();
