@@ -1,432 +1,1138 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kunja Reading Tracker</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 10px; }
-    .container { max-width: 650px; margin: 0 auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-    
-    /* Live Network Status Banner */
-    .status-banner { display: none; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 14px; animation: fadeIn 0.2s ease; line-height: 1.4; word-break: break-word; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.35rem);
+      --text-xl: clamp(1.35rem, 1.15rem + 1vw, 1.8rem);
 
-    /* Tab Deck Navigation */
-    .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; gap: 4px; }
-    .tab-btn { flex: 1; padding: 12px 6px; background: none; border: none; font-size: 14px; font-weight: 600; color: #64748b; cursor: pointer; text-align: center; border-bottom: 3px solid transparent; transition: all 0.2s; }
-    .tab-btn.active { color: #1e3a8a; border-bottom-color: #1e3a8a; }
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      --space-10: 2.5rem;
+      --space-12: 3rem;
+
+      --color-bg: #f7f6f2;
+      --color-surface: #fbfbf9;
+      --color-surface-2: #f3f0ec;
+      --color-surface-offset: #ece8e1;
+      --color-border: #d8d3cb;
+      --color-divider: #e1ddd7;
+      --color-text: #24211c;
+      --color-text-muted: #6d6a64;
+      --color-text-faint: #9d9a95;
+      --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f;
+      --color-primary-hover: #0c4e54;
+      --color-primary-highlight: #d7e7e6;
+      --color-success: #437a22;
+      --color-success-highlight: #dbe7d2;
+      --color-blue: #006494;
+      --color-blue-highlight: #d7e4ec;
+      --color-warning: #b36b00;
+      --color-warning-highlight: #f4e5c8;
+      --color-error: #a13544;
+      --color-error-highlight: #f1d9dc;
+
+      --radius-sm: 0.5rem;
+      --radius-md: 0.8rem;
+      --radius-lg: 1rem;
+      --radius-xl: 1.25rem;
+      --radius-full: 999px;
+
+      --shadow-sm: 0 1px 2px rgba(34, 29, 23, 0.06);
+      --shadow-md: 0 8px 24px rgba(34, 29, 23, 0.08);
+      --shadow-lg: 0 18px 42px rgba(34, 29, 23, 0.14);
+
+      --font-body: 'Satoshi', Inter, sans-serif;
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #171614;
+      --color-surface: #1d1b18;
+      --color-surface-2: #25231f;
+      --color-surface-offset: #2d2a25;
+      --color-border: #3c3933;
+      --color-divider: #302d28;
+      --color-text: #ddd9d1;
+      --color-text-muted: #a4a097;
+      --color-text-faint: #737068;
+      --color-text-inverse: #171614;
+      --color-primary: #5ca5ad;
+      --color-primary-hover: #7ec0c7;
+      --color-primary-highlight: #243133;
+      --color-success: #7fb25a;
+      --color-success-highlight: #283323;
+      --color-blue: #73add9;
+      --color-blue-highlight: #23323e;
+      --color-warning: #ebb252;
+      --color-warning-highlight: #3a3020;
+      --color-error: #e17a86;
+      --color-error-highlight: #3b2529;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+      --shadow-lg: 0 18px 42px rgba(0, 0, 0, 0.36);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: 1.5;
+      background: linear-gradient(180deg, var(--color-bg), var(--color-surface-2));
+      color: var(--color-text);
+      padding: var(--space-4);
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    textarea { resize: vertical; min-height: 88px; }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      padding: 0.8rem 0.9rem;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
+    }
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: var(--space-4);
+    }
+    .shell {
+      background: color-mix(in srgb, var(--color-surface) 92%, white 8%);
+      border: 1px solid var(--color-border);
+      border-radius: 28px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .topbar {
+      padding: var(--space-5);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      border-bottom: 1px solid var(--color-divider);
+      background: color-mix(in srgb, var(--color-surface) 78%, var(--color-bg) 22%);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: var(--color-primary);
+      background: var(--color-primary-highlight);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
+      flex: 0 0 auto;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: var(--text-xl);
+      line-height: 1.1;
+    }
+    .brand p {
+      margin: 0.2rem 0 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .topbar-actions { display: flex; gap: var(--space-2); align-items: center; }
+
+    .icon-btn, .btn, .tab-btn {
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      transition: transform var(--transition), background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+    }
+    .icon-btn:hover, .btn:hover, .tab-btn:hover { transform: translateY(-1px); }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-color: var(--color-border);
+    }
+    .btn {
+      min-height: 44px;
+      padding: 0.8rem 1rem;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-color: var(--color-border);
+    }
+    .btn-primary { background: var(--color-primary); color: var(--color-text-inverse); border-color: var(--color-primary); }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-soft { background: var(--color-primary-highlight); color: var(--color-primary); border-color: transparent; }
+    .btn-danger { background: var(--color-error-highlight); color: var(--color-error); border-color: transparent; }
+    .btn-inline { min-height: 36px; padding: 0.55rem 0.8rem; font-weight: 700; }
+
+    .status-banner {
+      display: none;
+      margin: 0 var(--space-5) var(--space-4);
+      border-radius: var(--radius-md);
+      padding: 0.95rem 1rem;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .status-banner.show { display: block; }
+    .status-sync { background: var(--color-blue-highlight); color: var(--color-blue); }
+    .status-success { background: var(--color-success-highlight); color: var(--color-success); }
+    .status-fault { background: var(--color-error-highlight); color: var(--color-error); }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-2);
+      padding: 0 var(--space-5) var(--space-4);
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      min-height: 44px;
+      padding: 0.85rem 1rem;
+      background: var(--color-surface-2);
+      border-color: var(--color-border);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+    .tab-btn.active {
+      background: var(--color-primary-highlight);
+      color: var(--color-primary);
+      border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    }
+
+    .content { padding: 0 var(--space-5) var(--space-5); }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Tab 1: Stats Dashboard Display Cards */
-    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px; margin-bottom: 12px; }
-    .stat-val { font-size: 26px; font-weight: 800; color: #1e3a8a; margin-top: 4px; }
-    .points-badge { display: inline-block; background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 13px; margin-top: 6px; }
-    
-    /* Gamified Progress Meters */
-    .milestone-container { margin-top: 14px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
-    .progress-track { height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative; margin: 8px 0; }
-    .progress-bar { height: 100%; background: #3b82f6; width: 0%; transition: width 0.4s ease; }
-    .milestone-markers { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; font-weight: 600; }
-    .marker { padding: 2px 6px; border-radius: 4px; }
-    .marker.reached { background: #dcfce7; color: #15803d; }
+    .hero-grid, .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: var(--space-4);
+    }
+    .panel {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 22px;
+      box-shadow: var(--shadow-sm);
+      padding: var(--space-4);
+    }
+    .panel-title {
+      margin: 0 0 var(--space-2);
+      font-size: var(--text-lg);
+      line-height: 1.15;
+    }
+    .panel-subtitle {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .big-stat {
+      grid-column: span 7;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 230px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary-highlight) 70%, var(--color-surface) 30%), var(--color-surface));
+    }
+    .big-stat-value {
+      margin-top: var(--space-4);
+      font-size: clamp(2rem, 1.6rem + 2vw, 3.5rem);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm);
+      font-weight: 700;
+    }
+    .mini-kpis { grid-column: span 5; display: grid; gap: var(--space-4); }
+    .kpi-card { min-height: 107px; }
+    .kpi-label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+    .kpi-value { margin-top: 0.4rem; font-size: 1.8rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .kpi-note { margin-top: 0.3rem; color: var(--color-text-muted); font-size: var(--text-sm); }
 
-    /* Tab 2: Hyper-Compact Single Row Elements */
-    .add-trigger-btn { width: 100%; padding: 12px; background-color: #1e3a8a; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
-    .compact-row { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #f1f5f9; padding: 10px 4px; gap: 8px; }
-    .compact-info { flex: 1; min-width: 0; }
-    .compact-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; }
-    .compact-meta { font-size: 11px; color: #64748b; }
-    .compact-actions { display: flex; gap: 4px; shrink: 0; }
-    .mini-btn { padding: 6px 10px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-    .mini-btn.empty { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .mini-btn.done { background: #d1fae5; color: #065f46; font-weight: normal; pointer-events: none; border: 1px solid #a7f3d0; }
-    .mini-btn.reading { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .yearly-list { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+    .year-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 18px; padding: var(--space-4); }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+    .year-title { font-size: var(--text-base); font-weight: 800; }
+    .year-total { color: var(--color-primary); font-size: var(--text-sm); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .progress-track { height: 12px; background: var(--color-surface-offset); border-radius: var(--radius-full); overflow: hidden; margin: var(--space-3) 0; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 76%, white)); border-radius: inherit; transition: width 300ms ease; }
+    .milestones { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .marker { padding: 0.35rem 0.6rem; border-radius: var(--radius-full); background: var(--color-surface-2); color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 700; }
+    .marker.reached { background: var(--color-success-highlight); color: var(--color-success); }
 
-    /* Tab 3: Summary Workspace Fields */
-    .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; margin-bottom: 12px; }
-    .summary-title { font-weight: bold; font-size: 15px; color: #0f172a; margin-bottom: 6px; }
-    textarea { width: 100%; height: 75px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; resize: vertical; font-family: inherit; }
-    .summary-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
-    .word-counter { font-size: 12px; color: #64748b; }
-    .btn-save-summary { background: #10b981; color: white; padding: 6px 14px; font-size: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+    .controls {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr 0.7fr auto;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      align-items: end;
+    }
+    .field label { display: block; margin-bottom: 0.45rem; font-size: var(--text-xs); font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
 
-    /* New Row Popdown Form Panel */
-    .new-book-panel { background: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; display: none; }
-    .new-book-panel label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-    .new-book-panel input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; }
-    
-    .loading { text-align: center; color: #64748b; padding: 30px; font-style: italic; }
+    .add-panel {
+      display: none;
+      margin-bottom: var(--space-4);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: var(--space-4);
+    }
+    .add-panel.open { display: block; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: var(--space-3);
+    }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+    .span-12 { grid-column: span 12; }
+    .form-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+
+    .log-list { display: grid; gap: var(--space-3); }
+    .book-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) auto auto auto;
+      gap: var(--space-3);
+      align-items: center;
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+    }
+    .book-main { min-width: 0; }
+    .book-title {
+      font-size: var(--text-base);
+      font-weight: 800;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .book-meta {
+      margin-top: 0.35rem;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .book-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: 800;
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+    }
+    .book-badge.finished { background: var(--color-success-highlight); color: var(--color-success); }
+    .book-badge.reading { background: var(--color-blue-highlight); color: var(--color-blue); }
+    .stamp-stack, .row-tools { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
+    .stamp-btn {
+      min-height: 40px;
+      min-width: 98px;
+      padding: 0.65rem 0.8rem;
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+      color: var(--color-text);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .stamp-btn.active-start { background: var(--color-blue-highlight); color: var(--color-blue); border-color: transparent; }
+    .stamp-btn.active-finish { background: var(--color-success-highlight); color: var(--color-success); border-color: transparent; }
+
+    .summary-list { display: grid; gap: var(--space-3); }
+    .summary-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: var(--space-4);
+    }
+    .summary-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+    .summary-title { font-size: var(--text-base); font-weight: 800; }
+    .summary-meta { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .summary-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+    .word-counter { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+    .empty-state, .loading {
+      background: var(--color-surface);
+      border: 1px dashed var(--color-border);
+      border-radius: 20px;
+      padding: var(--space-8) var(--space-4);
+      text-align: center;
+      color: var(--color-text-muted);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+
+    @media (max-width: 880px) {
+      .big-stat, .mini-kpis { grid-column: 1 / -1; }
+      .controls { grid-template-columns: 1fr 1fr; }
+      .controls .btn { grid-column: 1 / -1; }
+      .book-row { grid-template-columns: 1fr; }
+      .stamp-stack, .row-tools { justify-content: flex-start; }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: var(--space-2); }
+      .shell { border-radius: 22px; }
+      .topbar, .tabs, .content { padding-left: var(--space-3); padding-right: var(--space-3); }
+      .topbar { padding-top: var(--space-4); }
+      .status-banner { margin-left: var(--space-3); margin-right: var(--space-3); }
+      .controls { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .span-6, .span-4, .span-3, .span-12 { grid-column: span 1; }
+      .chip-row { gap: 0.45rem; }
+      .tab-btn { width: 100%; }
+      .summary-footer, .summary-head, .row-between { align-items: flex-start; }
+      .stamp-stack { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+      .stamp-btn { width: 100%; min-width: 0; }
+      .row-tools { width: 100%; }
+      .row-tools .btn { flex: 1; }
+      .big-stat { min-height: auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
   </style>
 </head>
 <body>
+  <div class="app">
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Kunja logo">
+              <path d="M12 10v28" />
+              <path d="M12 10c9 0 13 4 20 4v24c-7 0-11-4-20-4" />
+              <path d="M32 14c2 0 4 1 4 3v21" />
+            </svg>
+          </div>
+          <div>
+            <h1>Kunja Reading Tracker</h1>
+            <p>Compact reading log, synced to your SheetDB endpoint.</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Theme">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+          <button class="btn btn-soft" type="button" onclick="fetchAllData(true)">Refresh</button>
+        </div>
+      </header>
 
-<div class="container">
-  <div id="statusBanner" class="status-banner"></div>
+      <div id="statusBanner" class="status-banner" role="status" aria-live="polite"></div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab(0)">📊 Stats Dashboard</button>
-    <button class="tab-btn" onclick="switchTab(1)">📚 Compact Log</button>
-    <button class="tab-btn" onclick="switchTab(2)">✍️ Viaan's Summaries</button>
-  </div>
+      <nav class="tabs" aria-label="Sections">
+        <button class="tab-btn active" type="button" onclick="switchTab(0)">Overview</button>
+        <button class="tab-btn" type="button" onclick="switchTab(1)">Reading log</button>
+        <button class="tab-btn" type="button" onclick="switchTab(2)">Summaries</button>
+      </nav>
 
-  <div id="tab0" class="tab-content active">
-    <div class="stat-card">
-      <label style="font-size: 13px; font-weight: bold; color: #64748b;">ALL-TIME PROGRESS (FINISHED BOOKS ONLY)</label>
-      <div class="stat-val" id="totalCumulativePages">0 pages</div>
-      <div class="points-badge" id="totalSummaryPoints">🏆 0 Total Summary Points</div>
+      <main class="content">
+        <section id="tab0" class="tab-content active" aria-labelledby="overview-tab">
+          <div class="hero-grid">
+            <article class="panel big-stat">
+              <div>
+                <p class="kpi-label">All-time finished pages</p>
+                <div class="big-stat-value" id="totalCumulativePages">0</div>
+                <p class="panel-subtitle" id="allTimeFinishedNote">Tracking finished books only.</p>
+              </div>
+              <div class="chip-row">
+                <div class="chip" id="totalFinishedBooks">📘 0 finished books</div>
+                <div class="chip" id="totalSummaryPoints">✨ 0 summary points</div>
+                <div class="chip" id="completionRate">⏱️ 0% completed</div>
+              </div>
+            </article>
+            <div class="mini-kpis">
+              <article class="panel kpi-card">
+                <div class="kpi-label">Currently reading</div>
+                <div class="kpi-value" id="currentlyReadingCount">0</div>
+                <div class="kpi-note">Started, not finished.</div>
+              </article>
+              <article class="panel kpi-card">
+                <div class="kpi-label">Books in log</div>
+                <div class="kpi-value" id="totalBooksCount">0</div>
+                <div class="kpi-note">All rows from the sheet.</div>
+              </article>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top: var(--space-4);">
+            <div class="row-between">
+              <div>
+                <h2 class="panel-title">Yearly milestones</h2>
+                <p class="panel-subtitle">Bronze 12k, silver 16k, gold 20k finished pages.</p>
+              </div>
+            </div>
+            <div id="yearlyBreakdownContainer" class="yearly-list"></div>
+          </div>
+        </section>
+
+        <section id="tab1" class="tab-content" aria-labelledby="log-tab">
+          <div class="panel" style="margin-bottom: var(--space-4);">
+            <div class="controls">
+              <div class="field">
+                <label for="searchInput">Search books</label>
+                <input id="searchInput" type="search" placeholder="Title or year" oninput="renderAll()">
+              </div>
+              <div class="field">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter" onchange="renderAll()">
+                  <option value="all">All books</option>
+                  <option value="reading">Currently reading</option>
+                  <option value="finished">Finished</option>
+                  <option value="not-started">Not started</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sortSelect">Sort</label>
+                <select id="sortSelect" onchange="renderAll()">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="title-asc">Title A-Z</option>
+                  <option value="pages-desc">Pages high-low</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" type="button" onclick="toggleAddPanel(true)">Add new book</button>
+            </div>
+
+            <div id="newBookPanel" class="add-panel">
+              <div class="form-grid">
+                <div class="field span-6">
+                  <label for="title">Book title / author</label>
+                  <input type="text" id="title" placeholder="Title / Author">
+                </div>
+                <div class="field span-3">
+                  <label for="pages">Total pages</label>
+                  <input type="number" id="pages" placeholder="Pages" min="0">
+                </div>
+                <div class="field span-3">
+                  <label for="yearInput">Year</label>
+                  <input type="number" id="yearInput" placeholder="2026" min="2000" max="2099">
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn" type="button" onclick="toggleAddPanel(false)">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="saveNewBook()">Save book</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="compactLogContainer" class="loading">Syncing reading log…</div>
+        </section>
+
+        <section id="tab2" class="tab-content" aria-labelledby="summaries-tab">
+          <div class="panel" style="margin-bottom: var(--space-4);">
+            <div class="row-between">
+              <div>
+                <h2 class="panel-title">Summary workspace</h2>
+                <p class="panel-subtitle">Write notes, track word counts, and save back to the sheet.</p>
+              </div>
+              <div class="chip" id="summaryCountChip">0 summaries saved</div>
+            </div>
+          </div>
+          <div id="summaryEditorContainer" class="loading">Opening summary notebook…</div>
+        </section>
+      </main>
     </div>
-    <div id="yearlyBreakdownContainer"></div>
   </div>
 
-  <div id="tab1" class="tab-content">
-    <button class="add-trigger-btn" onclick="toggleAddPanel(true)">➕ Add New Book Title</button>
-    <div class="new-book-panel" id="newBookPanel">
-      <div><label>Book Title / Author</label><input type="text" id="title" placeholder="Title"></div>
-      <div><label>Total Pages</label><input type="number" id="pages" placeholder="Pages"></div>
-      <div style="display:flex; gap:6px;">
-        <button class="mini-btn" style="background:#64748b; color:white; flex:1;" onclick="toggleAddPanel(false)">Cancel</button>
-        <button class="mini-btn" style="background:#10b981; color:white; flex:2;" onclick="saveNewBook()">Save Row</button>
-      </div>
-    </div>
-    <div id="compactLogContainer" class="loading">Syncing Log files...</div>
-  </div>
+  <script>
+    const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n";
+    let localCache = [];
+    let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
+    let hasValidNoKey = false;
+    let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
-  <div id="tab2" class="tab-content">
-    <div id="summaryEditorContainer" class="loading">Opening Summary notebook...</div>
-  </div>
-</div>
-
-<script>
-  const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n"; 
-  let localCache = [];
-
-  let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
-  let hasValidNoKey = false;
-
-  function updateStatusBanner(msg, type) {
     const banner = document.getElementById('statusBanner');
-    if (!msg) {
-      banner.style.display = 'none';
-      return;
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+
+    function applyTheme(theme) {
+      currentTheme = theme;
+      document.documentElement.setAttribute('data-theme', theme);
+      themeToggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+      themeToggle.innerHTML = theme === 'dark'
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
     }
-    banner.style.display = 'block';
-    banner.innerText = msg;
-    
-    if (type === 'sync') {
-      banner.style.backgroundColor = '#eff6ff'; banner.style.color = '#1e40af'; banner.style.border = '1px solid #bfdbfe';
-    } else if (type === 'success') {
-      banner.style.backgroundColor = '#ecfdf5'; banner.style.color = '#065f46'; banner.style.border = '1px solid #a7f3d0';
-      setTimeout(() => { banner.style.display = 'none'; }, 2500);
-    } else if (type === 'fault') {
-      banner.style.backgroundColor = '#fef2f2'; banner.style.color = '#991b1b'; banner.style.border = '1px solid #fca5a5';
-    }
-  }
+    themeToggle.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
+    applyTheme(currentTheme);
 
-  function switchTab(idx) {
-    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-    document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
-    if (localCache.length > 0) processAndRender(localCache);
-  }
-
-  function toggleAddPanel(show) {
-    document.getElementById('newBookPanel').style.display = show ? 'block' : 'none';
-  }
-
-  function getTodayString() {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const d = new Date();
-    return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
-  }
-
-  function calculatePoints(text) {
-    if (!text || !text.trim()) return 0;
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-    return words > 0 ? 10 + (words * 5) : 0;
-  }
-
-  function countWords(text) {
-    if (!text) return 0;
-    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
-  }
-
-  function handleServerError(res) {
-    if (!res.ok) {
-      return res.json().then(errBody => {
-        let errMsg = errBody.error || errBody.message || `HTTP error ${res.status}`;
-        throw new Error(errMsg);
-      }).catch(() => {
-        throw new Error(`Server returned status code ${res.status}`);
-      });
-    }
-    return res.json();
-  }
-
-  function fetchAllData() {
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(data => {
-        if (!Array.isArray(data) || data.length === 0) {
-          document.getElementById('compactLogContainer').innerText = "Spreadsheet workspace is blank.";
-          return;
-        }
-        
-        const keys = Object.keys(data[0]);
-        const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "").includes("no"));
-        if (foundNo) {
-          noKey = foundNo;
-          hasValidNoKey = true;
-        } else {
-          noKey = keys[0];
-          hasValidNoKey = false; 
-        }
-
-        yearKey = keys.find(k => k.toLowerCase().includes("year")) || keys[1] || "Year";
-        titleKey = keys.find(k => k.toLowerCase().includes("title")) || keys[2] || "Title";
-        startKey = keys.find(k => k.toLowerCase().includes("start")) || keys[3] || "Start";
-        finishKey = keys.find(k => k.toLowerCase().includes("finish")) || keys[4] || "Finish";
-        pagesKey = keys.find(k => k.toLowerCase().includes("page")) || keys[5] || "Pages";
-        summaryKey = keys.find(k => k.toLowerCase().includes("summar")) || keys.find(k => k.toLowerCase().includes("note")) || keys[6] || "Summary";
-
-        const cleanRows = data.filter(row => row[titleKey] !== "Title" && row[titleKey] !== "");
-
-        const formatted = cleanRows.map((row, idx) => {
-          const val = row[noKey];
-          const rawId = (val !== undefined && val !== null && val !== "") ? Number(val) : NaN;
-          return {
-            id: isNaN(rawId) ? idx + 1 : rawId, 
-            year: row[yearKey] || new Date().getFullYear(),
-            title: row[titleKey] || "Untitled Book",
-            start: row[startKey] || "",
-            finish: row[finishKey] || "",
-            pages: row[pagesKey] ? Number(row[pagesKey]) : 0,
-            summary: row[summaryKey] || ""
-          };
-        }).reverse(); 
-        
-        processAndRender(formatted);
-      }).catch(err => {
-        updateStatusBanner("⚠️ Connection Fault. Verify endpoint API visibility.", "fault");
-      });
-  }
-
-  function processAndRender(books) {
-    localCache = books;
-    
-    // TAB 1 Engine
-    let totalAllTime = 0, totalPoints = 0, yearlyMap = {};
-    books.forEach(b => {
-      totalPoints += calculatePoints(b.summary);
-      if (!yearlyMap[b.year]) yearlyMap[b.year] = 0;
-      
-      if (b.finish && b.finish.trim() !== "") {
-        totalAllTime += b.pages;
-        yearlyMap[b.year] += b.pages;
+    function updateStatusBanner(msg, type) {
+      if (!msg) {
+        banner.className = 'status-banner';
+        banner.textContent = '';
+        return;
       }
-    });
-
-    document.getElementById('totalCumulativePages').innerText = totalAllTime.toLocaleString() + " pages";
-    document.getElementById('totalSummaryPoints').innerText = `🏆 ${totalPoints.toLocaleString()} Viaan's Summary Points`;
-
-    const sortedYears = Object.keys(yearlyMap).sort().reverse();
-    document.getElementById('yearlyBreakdownContainer').innerHTML = sortedYears.map(yr => {
-      const pgs = yearlyMap[yr];
-      let pct = Math.min((pgs / 20000) * 100, 100);
-      return `
-        <div class="milestone-container">
-          <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;">
-            <span>📅 Year ${yr} Total</span>
-            <span style="color:#1e3a8a;">${pgs.toLocaleString()} / 20,000 pgs</span>
-          </div>
-          <div class="progress-track"><div class="progress-bar" style="width: ${pct}%"></div></div>
-          <div class="milestone-markers">
-            <span class="marker ${pgs >= 12000 ? 'reached' : ''}">🥉 Bronze (12k)</span>
-            <span class="marker ${pgs >= 16000 ? 'reached' : ''}">🥈 Silver (16k)</span>
-            <span class="marker ${pgs >= 20000 ? 'reached' : ''}">🥇 Gold (20k)</span>
-          </div>
-        </div>`;
-    }).join('');
-
-    // TAB 2 Engine
-    document.getElementById('compactLogContainer').innerHTML = books.map(b => {
-      const hasStart = b.start && b.start.trim() !== "";
-      const hasFinish = b.finish && b.finish.trim() !== "";
-      
-      const sBtn = hasStart 
-        ? `<button class="mini-btn reading" onclick="stampDate(${b.id}, 'Start')">${b.start.substring(0,6)}</button>` 
-        : `<button class="mini-btn empty" onclick="stampDate(${b.id}, 'Start')">⏱️ Start</button>`;
-        
-      const fBtn = hasFinish 
-        ? `<button class="mini-btn done">${b.finish.substring(0,6)}</button>` 
-        : `<button class="mini-btn empty" onclick="stampDate(${b.id}, 'Finish')">✅ Finish</button>`;
-        
-      return `
-        <div class="compact-row">
-          <div class="compact-info">
-            <div class="compact-title">${b.title}</div>
-            <div class="compact-meta">${b.pages} pgs | Yr: ${b.year}</div>
-          </div>
-          <div class="compact-actions">${sBtn}${fBtn}</div>
-        </div>`;
-    }).join('');
-
-    // TAB 3 Engine
-    document.getElementById('summaryEditorContainer').innerHTML = books.map(b => {
-      return `
-        <div class="summary-card">
-          <div class="summary-title">${b.title}</div>
-          <textarea id="sumText_${b.id}" oninput="updateLiveCounter(${b.id})" placeholder="Type summary content here...">${b.summary}</textarea>
-          <div class="summary-footer">
-            <div class="word-counter" id="countLabel_${b.id}">${countWords(b.summary)} words ✨ <strong>${calculatePoints(b.summary)} pts</strong></div>
-            <button class="btn-save-summary" id="saveBtn_${b.id}" onclick="saveSummary(${b.id})">Save Note</button>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  function updateLiveCounter(id) {
-    const val = document.getElementById(`sumText_${id}`).value;
-    document.getElementById(`countLabel_${id}`).innerHTML = `${countWords(val)} words ✨ <strong>${calculatePoints(val)} pts</strong>`;
-  }
-
-  function saveNewBook() {
-    const titleVal = document.getElementById('title').value.trim();
-    const pagesVal = document.getElementById('pages').value.trim();
-    if (!titleVal) return alert('Book title missing.');
-    
-    let nextId = 1;
-    if (localCache.length > 0) {
-      const validIds = localCache.map(b => Number(b.id)).filter(id => !isNaN(id));
-      if (validIds.length > 0) {
-        nextId = Math.max(...validIds) + 1;
+      banner.className = `status-banner show status-${type || 'sync'}`;
+      banner.textContent = msg;
+      if (type === 'success') {
+        window.clearTimeout(updateStatusBanner._timer);
+        updateStatusBanner._timer = setTimeout(() => {
+          banner.className = 'status-banner';
+          banner.textContent = '';
+        }, 2200);
       }
     }
-    
-    toggleAddPanel(false);
-    updateStatusBanner("⚡ Appending new book row entry to Google Sheet...", "sync");
 
-    let rowData = {};
-    rowData[noKey] = nextId;
-    rowData[yearKey] = new Date().getFullYear();
-    rowData[titleKey] = titleVal;
-    rowData[pagesKey] = pagesVal;
-    rowData[startKey] = "";
-    rowData[finishKey] = "";
-    rowData[summaryKey] = "";
+    function switchTab(idx) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+      renderAll();
+    }
 
-    fetch(API_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ data: [rowData] })
-    })
-    .then(handleServerError)
-    .then(() => {
-      updateStatusBanner("✅ Book successfully added!", "success");
-      document.getElementById('title').value = ''; 
-      document.getElementById('pages').value = ''; 
-      fetchAllData(); 
-    }).catch(err => {
-      updateStatusBanner(`❌ Save Error: ${err.message}`, "fault");
-    });
-  }
+    function toggleAddPanel(show) {
+      const panel = document.getElementById('newBookPanel');
+      panel.classList.toggle('open', !!show);
+      if (show) {
+        document.getElementById('yearInput').value = new Date().getFullYear();
+        document.getElementById('title').focus();
+      }
+    }
 
-  function stampDate(id, targetColumnType) {
-    const book = localCache.find(b => b.id === id);
-    if (!book) return;
+    function getTodayString() {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+    }
 
-    const today = getTodayString();
-    updateStatusBanner(`⚡ Logging ${targetColumnType} timestamp to sheet row...`, "sync");
-    
-    let payload = {};
-    const operationalKey = (targetColumnType === 'Start') ? startKey : finishKey;
-    payload[operationalKey] = today;
+    function calculatePoints(text) {
+      if (!text || !text.trim()) return 0;
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      return 10 + (words * 5);
+    }
 
-    let patchUrl = hasValidNoKey 
-      ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`
-      : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+    function countWords(text) {
+      if (!text || !text.trim()) return 0;
+      return text.trim().split(/\s+/).filter(Boolean).length;
+    }
 
-    fetch(patchUrl, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ data: payload })
-    })
-    .then(handleServerError)
-    .then(() => {
-      updateStatusBanner(`✅ ${targetColumnType} date stamped successfully!`, "success");
-      fetchAllData();
-    }).catch(err => {
-      if (hasValidNoKey) {
-        const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
-        fetch(fallbackUrl, {
-          method: 'PATCH',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ data: payload })
-        })
-        .then(handleServerError)
-        .then(() => {
-          updateStatusBanner(`✅ ${targetColumnType} date stamped via fallback matching!`, "success");
-          fetchAllData();
-        }).catch(fallbackErr => {
-          updateStatusBanner(`❌ Sync failed: ${fallbackErr.message}`, "fault");
+    function escapeHtml(text) {
+      return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function handleServerError(res) {
+      if (!res.ok) {
+        return res.json().then(errBody => {
+          throw new Error(errBody.error || errBody.message || `HTTP ${res.status}`);
+        }).catch(() => {
+          throw new Error(`Server returned status ${res.status}`);
         });
-      } else {
-        updateStatusBanner(`❌ Sync failed: ${err.message}`, "fault");
       }
-    });
-  }
+      return res.json();
+    }
 
-  function saveSummary(id) {
-    const book = localCache.find(b => b.id === id);
-    if (!book) return;
+    function inferKeys(data) {
+      const keys = Object.keys(data[0] || {});
+      const foundNo = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '').includes('no'));
+      if (foundNo) {
+        noKey = foundNo;
+        hasValidNoKey = true;
+      } else {
+        noKey = keys[0] || 'No';
+        hasValidNoKey = false;
+      }
+      yearKey = keys.find(k => k.toLowerCase().includes('year')) || keys[1] || 'Year';
+      titleKey = keys.find(k => k.toLowerCase().includes('title')) || keys[2] || 'Title';
+      startKey = keys.find(k => k.toLowerCase().includes('start')) || keys[3] || 'Start';
+      finishKey = keys.find(k => k.toLowerCase().includes('finish')) || keys[4] || 'Finish';
+      pagesKey = keys.find(k => k.toLowerCase().includes('page')) || keys[5] || 'Pages';
+      summaryKey = keys.find(k => k.toLowerCase().includes('summar')) || keys.find(k => k.toLowerCase().includes('note')) || keys[6] || 'Summary';
+    }
 
-    const text = document.getElementById(`sumText_${id}`).value;
-    const btn = document.getElementById(`saveBtn_${id}`);
-    btn.innerText = "Saving...";
-    btn.disabled = true;
-    
-    updateStatusBanner("⚡ Saving notebook summary data to spreadsheet...", "sync");
+    function normalizeRows(data) {
+      const cleanRows = data.filter(row => {
+        const titleVal = String(row[titleKey] || '').trim();
+        return titleVal && titleVal !== 'Title';
+      });
 
-    let payload = {};
-    payload[summaryKey] = text;
+      return cleanRows.map((row, idx) => {
+        const val = row[noKey];
+        const rawId = (val !== undefined && val !== null && val !== '') ? Number(val) : NaN;
+        return {
+          id: Number.isNaN(rawId) ? idx + 1 : rawId,
+          year: String(row[yearKey] || new Date().getFullYear()),
+          title: String(row[titleKey] || 'Untitled Book').trim(),
+          start: String(row[startKey] || '').trim(),
+          finish: String(row[finishKey] || '').trim(),
+          pages: Number(row[pagesKey]) || 0,
+          summary: String(row[summaryKey] || '')
+        };
+      }).reverse();
+    }
 
-    let patchUrl = hasValidNoKey 
-      ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(id)}`
-      : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+    function fetchAllData(showRefreshMessage) {
+      if (showRefreshMessage) updateStatusBanner('Refreshing reading tracker from SheetDB…', 'sync');
+      fetch(API_URL)
+        .then(handleServerError)
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) {
+            localCache = [];
+            renderAll();
+            updateStatusBanner('Spreadsheet is reachable, but it has no rows yet.', 'success');
+            return;
+          }
+          inferKeys(data);
+          localCache = normalizeRows(data);
+          renderAll();
+          if (showRefreshMessage) updateStatusBanner('Tracker refreshed.', 'success');
+        })
+        .catch(err => {
+          updateStatusBanner(`Connection error: ${err.message}`, 'fault');
+          document.getElementById('compactLogContainer').innerHTML = '<div class="empty-state">Unable to load the reading log.</div>';
+          document.getElementById('summaryEditorContainer').innerHTML = '<div class="empty-state">Unable to load summaries.</div>';
+          document.getElementById('yearlyBreakdownContainer').innerHTML = '<div class="empty-state">Unable to load yearly stats.</div>';
+        });
+    }
 
-    fetch(patchUrl, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ data: payload })
-    })
-    .then(handleServerError)
-    .then(() => {
-      updateStatusBanner("✅ Summary notes saved!", "success");
-      btn.innerText = "Save Note";
-      btn.disabled = false;
-      fetchAllData();
-    }).catch(err => {
-      const fallbackUrl = `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
-      fetch(fallbackUrl, {
+    function getFilteredBooks() {
+      const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const status = document.getElementById('statusFilter')?.value || 'all';
+      const sort = document.getElementById('sortSelect')?.value || 'newest';
+
+      let books = [...localCache].filter(b => {
+        const matchesSearch = !q || `${b.title} ${b.year}`.toLowerCase().includes(q);
+        const state = b.finish ? 'finished' : (b.start ? 'reading' : 'not-started');
+        const matchesStatus = status === 'all' || status === state;
+        return matchesSearch && matchesStatus;
+      });
+
+      books.sort((a, b) => {
+        switch (sort) {
+          case 'oldest': return Number(a.id) - Number(b.id);
+          case 'title-asc': return a.title.localeCompare(b.title);
+          case 'pages-desc': return b.pages - a.pages;
+          case 'newest':
+          default: return Number(b.id) - Number(a.id);
+        }
+      });
+      return books;
+    }
+
+    function renderStats() {
+      const totalBooks = localCache.length;
+      const finishedBooks = localCache.filter(b => b.finish).length;
+      const readingBooks = localCache.filter(b => b.start && !b.finish).length;
+      const totalFinishedPages = localCache.filter(b => b.finish).reduce((sum, b) => sum + b.pages, 0);
+      const totalPoints = localCache.reduce((sum, b) => sum + calculatePoints(b.summary), 0);
+      const completion = totalBooks ? Math.round((finishedBooks / totalBooks) * 100) : 0;
+      const summaryCount = localCache.filter(b => b.summary.trim()).length;
+      const yearlyMap = {};
+
+      localCache.forEach(b => {
+        if (!yearlyMap[b.year]) yearlyMap[b.year] = 0;
+        if (b.finish) yearlyMap[b.year] += b.pages;
+      });
+
+      document.getElementById('totalCumulativePages').textContent = `${totalFinishedPages.toLocaleString()} pages`;
+      document.getElementById('allTimeFinishedNote').textContent = `${finishedBooks} of ${totalBooks} books marked finished.`;
+      document.getElementById('totalFinishedBooks').textContent = `📘 ${finishedBooks} finished books`;
+      document.getElementById('totalSummaryPoints').textContent = `✨ ${totalPoints.toLocaleString()} summary points`;
+      document.getElementById('completionRate').textContent = `⏱️ ${completion}% completed`;
+      document.getElementById('currentlyReadingCount').textContent = readingBooks.toLocaleString();
+      document.getElementById('totalBooksCount').textContent = totalBooks.toLocaleString();
+      document.getElementById('summaryCountChip').textContent = `${summaryCount} summaries saved`;
+
+      const years = Object.keys(yearlyMap).sort().reverse();
+      document.getElementById('yearlyBreakdownContainer').innerHTML = years.length ? years.map(year => {
+        const pages = yearlyMap[year];
+        const pct = Math.min((pages / 20000) * 100, 100);
+        return `
+          <article class="year-card">
+            <div class="row-between">
+              <div>
+                <div class="year-title">${escapeHtml(year)} reading total</div>
+                <div class="panel-subtitle">Finished-book pages only.</div>
+              </div>
+              <div class="year-total">${pages.toLocaleString()} / 20,000 pages</div>
+            </div>
+            <div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div class="milestones">
+              <span class="marker ${pages >= 12000 ? 'reached' : ''}">Bronze 12k</span>
+              <span class="marker ${pages >= 16000 ? 'reached' : ''}">Silver 16k</span>
+              <span class="marker ${pages >= 20000 ? 'reached' : ''}">Gold 20k</span>
+            </div>
+          </article>`;
+      }).join('') : '<div class="empty-state">No finished books yet, so yearly milestones are still empty.</div>';
+    }
+
+    function renderLog() {
+      const books = getFilteredBooks();
+      const container = document.getElementById('compactLogContainer');
+      if (!books.length) {
+        container.innerHTML = '<div class="empty-state">No books match the current filters.</div>';
+        return;
+      }
+
+      container.innerHTML = `<div class="log-list">${books.map(b => {
+        const statusClass = b.finish ? 'finished' : (b.start ? 'reading' : '');
+        const statusText = b.finish ? 'Finished' : (b.start ? 'Reading' : 'Not started');
+        const startButton = b.start
+          ? `<button class="stamp-btn active-start" type="button" onclick="stampDate(${b.id}, 'Start')">${escapeHtml(b.start.slice(0, 6))}</button>`
+          : `<button class="stamp-btn" type="button" onclick="stampDate(${b.id}, 'Start')">Start</button>`;
+        const finishButton = b.finish
+          ? `<button class="stamp-btn active-finish" type="button" onclick="clearDate(${b.id}, 'Finish')">${escapeHtml(b.finish.slice(0, 6))}</button>`
+          : `<button class="stamp-btn" type="button" onclick="stampDate(${b.id}, 'Finish')">Finish</button>`;
+        return `
+          <article class="book-row">
+            <div class="book-main">
+              <div class="book-title">${escapeHtml(b.title)}</div>
+              <div class="book-meta">
+                <span>${b.pages.toLocaleString()} pages</span>
+                <span>Year ${escapeHtml(b.year)}</span>
+                <span class="book-badge ${statusClass}">${statusText}</span>
+              </div>
+            </div>
+            <div class="stamp-stack">${startButton}${finishButton}</div>
+            <div class="row-tools">
+              <button class="btn btn-inline" type="button" onclick="editBook(${b.id})">Edit</button>
+              <button class="btn btn-inline btn-danger" type="button" onclick="deleteBook(${b.id})">Delete</button>
+            </div>
+          </article>`;
+      }).join('')}</div>`;
+    }
+
+    function renderSummaries() {
+      const books = getFilteredBooks();
+      const container = document.getElementById('summaryEditorContainer');
+      if (!books.length) {
+        container.innerHTML = '<div class="empty-state">No books match the current filters.</div>';
+        return;
+      }
+      container.innerHTML = `<div class="summary-list">${books.map(b => `
+        <article class="summary-card">
+          <div class="summary-head">
+            <div>
+              <div class="summary-title">${escapeHtml(b.title)}</div>
+              <div class="summary-meta">${b.pages.toLocaleString()} pages · Year ${escapeHtml(b.year)}</div>
+            </div>
+            <div class="book-badge ${b.finish ? 'finished' : (b.start ? 'reading' : '')}">${b.finish ? 'Finished' : (b.start ? 'Reading' : 'Not started')}</div>
+          </div>
+          <label class="sr-only" for="sumText_${b.id}">Summary for ${escapeHtml(b.title)}</label>
+          <textarea id="sumText_${b.id}" oninput="updateLiveCounter(${b.id})" placeholder="Write a quick summary, favorite scene, or lesson learned…">${escapeHtml(b.summary)}</textarea>
+          <div class="summary-footer">
+            <div class="word-counter" id="countLabel_${b.id}">${countWords(b.summary)} words · ${calculatePoints(b.summary)} pts</div>
+            <button class="btn btn-primary btn-inline" id="saveBtn_${b.id}" type="button" onclick="saveSummary(${b.id})">Save summary</button>
+          </div>
+        </article>
+      `).join('')}</div>`;
+    }
+
+    function renderAll() {
+      renderStats();
+      renderLog();
+      renderSummaries();
+    }
+
+    function updateLiveCounter(id) {
+      const val = document.getElementById(`sumText_${id}`).value;
+      document.getElementById(`countLabel_${id}`).textContent = `${countWords(val)} words · ${calculatePoints(val)} pts`;
+    }
+
+    function buildPatchUrl(book) {
+      return hasValidNoKey
+        ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(book.id)}`
+        : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+    }
+
+    function saveNewBook() {
+      const titleVal = document.getElementById('title').value.trim();
+      const pagesVal = Number(document.getElementById('pages').value || 0);
+      const yearVal = String(document.getElementById('yearInput').value || new Date().getFullYear());
+      if (!titleVal) {
+        alert('Book title is required.');
+        return;
+      }
+
+      const validIds = localCache.map(b => Number(b.id)).filter(n => !Number.isNaN(n));
+      const nextId = validIds.length ? Math.max(...validIds) + 1 : 1;
+      const newBook = { id: nextId, year: yearVal, title: titleVal, start: '', finish: '', pages: pagesVal, summary: '' };
+      localCache.unshift(newBook);
+      renderAll();
+      toggleAddPanel(false);
+      updateStatusBanner('Adding book to the sheet…', 'sync');
+
+      const rowData = {};
+      rowData[noKey] = nextId;
+      rowData[yearKey] = yearVal;
+      rowData[titleKey] = titleVal;
+      rowData[pagesKey] = pagesVal;
+      rowData[startKey] = '';
+      rowData[finishKey] = '';
+      rowData[summaryKey] = '';
+
+      fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [rowData] })
+      })
+      .then(handleServerError)
+      .then(() => {
+        document.getElementById('title').value = '';
+        document.getElementById('pages').value = '';
+        document.getElementById('yearInput').value = new Date().getFullYear();
+        updateStatusBanner('Book added successfully.', 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        localCache = localCache.filter(b => b.id !== nextId);
+        renderAll();
+        updateStatusBanner(`Add failed: ${err.message}`, 'fault');
+      });
+    }
+
+    function stampDate(id, targetColumnType) {
+      const book = localCache.find(b => b.id === id);
+      if (!book) return;
+      const operationalKey = targetColumnType === 'Start' ? startKey : finishKey;
+      const today = getTodayString();
+      const originalValue = targetColumnType === 'Start' ? book.start : book.finish;
+      if (targetColumnType === 'Start') book.start = today;
+      if (targetColumnType === 'Finish') {
+        if (!book.start) book.start = today;
+        book.finish = today;
+      }
+      renderAll();
+      updateStatusBanner(`Saving ${targetColumnType.toLowerCase()} date…`, 'sync');
+
+      const payload = {};
+      payload[operationalKey] = today;
+      if (targetColumnType === 'Finish' && !originalValue && !book.start) payload[startKey] = today;
+
+      fetch(buildPatchUrl(book), {
         method: 'PATCH',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: payload })
       })
       .then(handleServerError)
       .then(() => {
-        updateStatusBanner("✅ Summary saved via fallback query!", "success");
-        btn.innerText = "Save Note";
-        btn.disabled = false;
-        fetchAllData();
-      }).catch(fallbackErr => {
-        updateStatusBanner(`❌ SheetDB Error: ${fallbackErr.message}`, "fault");
-        btn.innerText = "Save Note";
-        btn.disabled = false;
+        updateStatusBanner(`${targetColumnType} date saved.`, 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        if (targetColumnType === 'Start') book.start = originalValue;
+        if (targetColumnType === 'Finish') book.finish = originalValue;
+        renderAll();
+        updateStatusBanner(`Date save failed: ${err.message}`, 'fault');
       });
-    });
-  }
+    }
 
-  window.onload = fetchAllData;
-</script>
+    function clearDate(id, targetColumnType) {
+      const book = localCache.find(b => b.id === id);
+      if (!book) return;
+      const sure = window.confirm(`Clear the ${targetColumnType.toLowerCase()} date for "${book.title}"?`);
+      if (!sure) return;
+      const key = targetColumnType === 'Start' ? startKey : finishKey;
+      const originalValue = targetColumnType === 'Start' ? book.start : book.finish;
+      if (targetColumnType === 'Start') book.start = '';
+      if (targetColumnType === 'Finish') book.finish = '';
+      renderAll();
+      updateStatusBanner(`Clearing ${targetColumnType.toLowerCase()} date…`, 'sync');
+
+      const payload = {};
+      payload[key] = '';
+      fetch(buildPatchUrl(book), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload })
+      })
+      .then(handleServerError)
+      .then(() => {
+        updateStatusBanner(`${targetColumnType} date cleared.`, 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        if (targetColumnType === 'Start') book.start = originalValue;
+        if (targetColumnType === 'Finish') book.finish = originalValue;
+        renderAll();
+        updateStatusBanner(`Clear failed: ${err.message}`, 'fault');
+      });
+    }
+
+    function saveSummary(id) {
+      const book = localCache.find(b => b.id === id);
+      if (!book) return;
+      const text = document.getElementById(`sumText_${id}`).value;
+      const btn = document.getElementById(`saveBtn_${id}`);
+      const oldSummary = book.summary;
+      book.summary = text;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      renderStats();
+      updateStatusBanner('Saving summary…', 'sync');
+
+      const payload = {};
+      payload[summaryKey] = text;
+      fetch(buildPatchUrl(book), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload })
+      })
+      .then(handleServerError)
+      .then(() => {
+        btn.disabled = false;
+        btn.textContent = 'Save summary';
+        updateStatusBanner('Summary saved.', 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        book.summary = oldSummary;
+        btn.disabled = false;
+        btn.textContent = 'Save summary';
+        renderAll();
+        updateStatusBanner(`Summary save failed: ${err.message}`, 'fault');
+      });
+    }
+
+    function editBook(id) {
+      const book = localCache.find(b => b.id === id);
+      if (!book) return;
+      const nextTitle = window.prompt('Edit book title / author', book.title);
+      if (nextTitle === null) return;
+      const nextPages = window.prompt('Edit total pages', book.pages);
+      if (nextPages === null) return;
+      const nextYear = window.prompt('Edit year', book.year);
+      if (nextYear === null) return;
+
+      const trimmedTitle = nextTitle.trim();
+      if (!trimmedTitle) {
+        alert('Title cannot be empty.');
+        return;
+      }
+
+      const original = { ...book };
+      book.title = trimmedTitle;
+      book.pages = Number(nextPages) || 0;
+      book.year = String(nextYear || book.year);
+      renderAll();
+      updateStatusBanner('Saving book edits…', 'sync');
+
+      const payload = {};
+      payload[titleKey] = book.title;
+      payload[pagesKey] = book.pages;
+      payload[yearKey] = book.year;
+
+      fetch(buildPatchUrl(original), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload })
+      })
+      .then(handleServerError)
+      .then(() => {
+        updateStatusBanner('Book updated.', 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        Object.assign(book, original);
+        renderAll();
+        updateStatusBanner(`Edit failed: ${err.message}`, 'fault');
+      });
+    }
+
+    function deleteBook(id) {
+      const book = localCache.find(b => b.id === id);
+      if (!book) return;
+      const sure = window.confirm(`Delete "${book.title}" from the tracker?`);
+      if (!sure) return;
+      const previous = [...localCache];
+      localCache = localCache.filter(b => b.id !== id);
+      renderAll();
+      updateStatusBanner('Deleting book…', 'sync');
+
+      fetch(buildPatchUrl(book), { method: 'DELETE' })
+        .then(handleServerError)
+        .then(() => {
+          updateStatusBanner('Book deleted.', 'success');
+          fetchAllData(false);
+        })
+        .catch(err => {
+          localCache = previous;
+          renderAll();
+          updateStatusBanner(`Delete failed: ${err.message}`, 'fault');
+        });
+    }
+
+    window.onload = () => {
+      document.getElementById('yearInput').value = new Date().getFullYear();
+      fetchAllData(false);
+    };
+  </script>
 </body>
 </html>
