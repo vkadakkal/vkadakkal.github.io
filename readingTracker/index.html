@@ -931,6 +931,7 @@
           id: Number.isNaN(rawId) ? idx + 1 : rawId,
           year: String(row[yearKey] || new Date().getFullYear()),
           title: String(row[titleKey] || 'Untitled Book').trim(),
+          lookupTitle: String(row[titleKey] || 'Untitled Book'),
           start: String(row[startKey] || '').trim(),
           finish: String(row[finishKey] || '').trim(),
           pages: Number(row[pagesKey]) || 0,
@@ -1262,7 +1263,7 @@
     function buildPatchUrl(book) {
       return hasValidNoKey
         ? `${API_URL}/${encodeURIComponent(noKey)}/${encodeURIComponent(book.id)}`
-        : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.title)}`;
+        : `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(book.lookupTitle ?? book.title)}`;
     }
 
     function saveNewBook() {
@@ -1276,7 +1277,7 @@
 
       const validIds = localCache.map(b => Number(b.id)).filter(n => !Number.isNaN(n));
       const nextId = validIds.length ? Math.max(...validIds) + 1 : 1;
-      const newBook = { id: nextId, year: yearVal, title: titleVal, start: '', finish: '', pages: pagesVal, summary: '' };
+      const newBook = { id: nextId, year: yearVal, title: titleVal, lookupTitle: titleVal, start: '', finish: '', pages: pagesVal, summary: '', dailyLog: [] };
       localCache.unshift(newBook);
       renderAll();
       toggleAddPanel(false);
