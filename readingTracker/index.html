@@ -413,6 +413,28 @@
       gap: var(--space-2);
       margin-top: var(--space-3);
     }
+
+    .daily-list { display: grid; gap: var(--space-3); }
+    .daily-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(110px, 150px) minmax(110px, 150px) auto;
+      gap: var(--space-3);
+      align-items: end;
+      padding: var(--space-4);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+    }
+    .daily-book { align-self: center; min-width: 0; }
+    .daily-result { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+    .daily-result.saved { color: var(--color-success); font-weight: 700; }
+    .report-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+    .report-table-wrap { overflow-x: auto; }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { padding: 0.8rem; border-bottom: 1px solid var(--color-border); text-align: left; }
+    .report-table th { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .report-table td:last-child, .report-table th:last-child { text-align: right; }
+    .print-only { display: none; }
     .word-counter { font-size: var(--text-sm); color: var(--color-text-muted); }
 
     .modal-backdrop {
@@ -481,6 +503,9 @@
       .controls { grid-template-columns: 1fr 1fr; }
       .controls .btn { grid-column: 1 / -1; }
       .book-row { grid-template-columns: 1fr; }
+      .daily-card { grid-template-columns: 1fr 1fr; }
+      .daily-book { grid-column: 1 / -1; }
+      .report-summary { grid-template-columns: 1fr; }
       .stamp-stack, .row-tools { justify-content: flex-start; }
     }
 
@@ -506,6 +531,18 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
+
+    @media print {
+      body { background: white; color: black; }
+      .topbar, .tabs, #statusBanner, #tab0, #tab1, #tab2, #tab4, .report-actions { display: none !important; }
+      .app, .shell, .content { margin: 0; padding: 0; max-width: none; }
+      #tab3 { display: block !important; }
+      #tab3 .panel { box-shadow: none; border: 0; padding: 0; }
+      .print-only { display: block; }
+      .report-table-wrap { overflow: visible; }
+      .report-table { font-size: 11pt; }
+      .report-table th, .report-table td { color: black; border-color: #bbb; }
     }
   </style>
 </head>
@@ -539,7 +576,9 @@
       <nav class="tabs" aria-label="Sections">
         <button class="tab-btn active" type="button" onclick="switchTab(0)">Overview</button>
         <button class="tab-btn" type="button" onclick="switchTab(1)">Reading log</button>
-        <button class="tab-btn" type="button" onclick="switchTab(2)">Summaries</button>
+        <button class="tab-btn" type="button" onclick="switchTab(2)">Daily reading</button>
+        <button class="tab-btn" type="button" onclick="switchTab(3)">Reading report</button>
+        <button class="tab-btn" type="button" onclick="switchTab(4)">Summaries</button>
       </nav>
 
       <main class="content">
@@ -635,7 +674,43 @@
           <div id="compactLogContainer" class="loading">Syncing reading log…</div>
         </section>
 
-        <section id="tab2" class="tab-content" aria-labelledby="summaries-tab">
+        <section id="tab2" class="tab-content" aria-labelledby="daily-tab">
+          <div class="panel" style="margin-bottom: var(--space-4);">
+            <div class="row-between">
+              <div>
+                <h2 class="panel-title">Today’s reading</h2>
+                <p class="panel-subtitle">Record the first and last page read today. Only actively reading books appear here.</p>
+              </div>
+              <div class="chip" id="dailyPagesChip">0 pages today</div>
+            </div>
+          </div>
+          <div id="dailyTrackerContainer" class="loading">Opening today’s reading tracker…</div>
+        </section>
+
+        <section id="tab3" class="tab-content" aria-labelledby="report-tab">
+          <div class="print-only">
+            <h1>Kunja Reading Tracker — Daily Reading Report</h1>
+            <p id="reportPrintedPeriod"></p>
+          </div>
+          <div class="panel" style="margin-bottom: var(--space-4);">
+            <div class="row-between">
+              <div>
+                <h2 class="panel-title">Daily reading report</h2>
+                <p class="panel-subtitle">A printable record of pages read each day.</p>
+              </div>
+              <div class="row-tools report-actions">
+                <div class="field">
+                  <label for="reportYear">Report year</label>
+                  <select id="reportYear" onchange="renderReadingReport()"></select>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="printReadingReport()">Print report</button>
+              </div>
+            </div>
+          </div>
+          <div id="readingReportContainer" class="loading">Preparing reading report…</div>
+        </section>
+
+        <section id="tab4" class="tab-content" aria-labelledby="summaries-tab">
           <div class="panel" style="margin-bottom: var(--space-4);">
             <div class="row-between">
               <div>
@@ -698,7 +773,7 @@
   <script>
     const API_URL = "https://sheetdb.io/api/v1/f8419edfrw92n";
     let localCache = [];
-    let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary";
+    let noKey = "No", yearKey = "Year", titleKey = "Title", startKey = "Start", finishKey = "Finish", pagesKey = "Pages", summaryKey = "Summary", dailyLogKey = "Daily Log";
     let hasValidNoKey = false;
     let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     let editingBookId = null;
@@ -754,6 +829,24 @@
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const d = new Date();
       return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+    }
+
+    function getTodayKey() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function parseDailyLog(value) {
+      if (!value) return [];
+      try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        return Array.isArray(parsed) ? parsed.filter(entry => entry && entry.date) : [];
+      } catch (_) {
+        return [];
+      }
     }
 
     function toInputDate(dateStr) {
@@ -822,6 +915,7 @@
       finishKey = keys.find(k => k.toLowerCase().includes('finish')) || keys[4] || 'Finish';
       pagesKey = keys.find(k => k.toLowerCase().includes('page')) || keys[5] || 'Pages';
       summaryKey = keys.find(k => k.toLowerCase().includes('summar')) || keys.find(k => k.toLowerCase().includes('note')) || keys[6] || 'Summary';
+      dailyLogKey = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '').includes('dailylog')) || 'Daily Log';
     }
 
     function normalizeRows(data) {
@@ -840,7 +934,8 @@
           start: String(row[startKey] || '').trim(),
           finish: String(row[finishKey] || '').trim(),
           pages: Number(row[pagesKey]) || 0,
-          summary: String(row[summaryKey] || '')
+          summary: String(row[summaryKey] || ''),
+          dailyLog: parseDailyLog(row[dailyLogKey])
         };
       }).reverse();
     }
@@ -1002,10 +1097,161 @@
       `).join('')}</div>`;
     }
 
+    function renderDailyTracker() {
+      const activeBooks = localCache.filter(book => book.start && !book.finish);
+      const container = document.getElementById('dailyTrackerContainer');
+      const today = getTodayKey();
+      const todayPages = activeBooks.reduce((sum, book) => {
+        const entry = book.dailyLog.find(item => item.date === today);
+        return sum + (entry ? Math.max(0, Number(entry.end) - Number(entry.start) + 1) : 0);
+      }, 0);
+      document.getElementById('dailyPagesChip').textContent = `${todayPages.toLocaleString()} ${todayPages === 1 ? 'page' : 'pages'} today`;
+
+      if (!activeBooks.length) {
+        container.innerHTML = '<div class="empty-state">No books are currently marked as reading. Start a book from the Reading log first.</div>';
+        return;
+      }
+
+      container.innerHTML = `<div class="daily-list">${activeBooks.map(book => {
+        const entry = book.dailyLog.find(item => item.date === today);
+        const pagesRead = entry ? Math.max(0, Number(entry.end) - Number(entry.start) + 1) : 0;
+        return `
+          <article class="daily-card">
+            <div class="daily-book">
+              <div class="book-title">${escapeHtml(book.title)}</div>
+              <div class="book-meta"><span>${book.pages.toLocaleString()} pages</span><span>Started ${escapeHtml(book.start)}</span></div>
+              <div class="daily-result ${entry ? 'saved' : ''}" id="dailyResult_${book.id}">${entry ? `${pagesRead} pages recorded today` : 'No pages recorded today'}</div>
+            </div>
+            <div class="field">
+              <label for="dailyStart_${book.id}">Starting page</label>
+              <input id="dailyStart_${book.id}" type="number" min="1" max="${book.pages || ''}" value="${entry ? Number(entry.start) : ''}" placeholder="e.g. 42">
+            </div>
+            <div class="field">
+              <label for="dailyEnd_${book.id}">Ending page</label>
+              <input id="dailyEnd_${book.id}" type="number" min="1" max="${book.pages || ''}" value="${entry ? Number(entry.end) : ''}" placeholder="e.g. 68">
+            </div>
+            <button class="btn btn-primary" id="dailySave_${book.id}" type="button" onclick="saveDailyReading(${book.id})">${entry ? 'Update' : 'Save'}</button>
+          </article>`;
+      }).join('')}</div>`;
+    }
+
+    function getDailyReportRows() {
+      return localCache.flatMap(book => book.dailyLog.map(entry => ({
+        date: String(entry.date || ''),
+        title: book.title,
+        start: Number(entry.start),
+        end: Number(entry.end),
+        pages: Math.max(0, Number(entry.end) - Number(entry.start) + 1)
+      }))).filter(entry => /^\d{4}-\d{2}-\d{2}$/.test(entry.date) && entry.pages > 0);
+    }
+
+    function formatReportDate(date) {
+      const [year, month, day] = date.split('-').map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    }
+
+    function renderReadingReport() {
+      const allRows = getDailyReportRows();
+      const yearSelect = document.getElementById('reportYear');
+      const currentSelection = yearSelect.value;
+      const years = [...new Set(allRows.map(row => row.date.slice(0, 4)))].sort().reverse();
+      const currentYear = String(new Date().getFullYear());
+      if (!years.includes(currentYear)) years.unshift(currentYear);
+      yearSelect.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join('');
+      yearSelect.value = years.includes(currentSelection) ? currentSelection : currentYear;
+
+      const selectedYear = yearSelect.value;
+      const rows = allRows.filter(row => row.date.startsWith(`${selectedYear}-`))
+        .sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
+      const totalPages = rows.reduce((sum, row) => sum + row.pages, 0);
+      const bookCount = new Set(rows.map(row => row.title)).size;
+      document.getElementById('reportPrintedPeriod').textContent = `Reporting year: ${selectedYear}`;
+
+      const container = document.getElementById('readingReportContainer');
+      if (!rows.length) {
+        container.innerHTML = `<div class="empty-state">No daily reading has been recorded for ${escapeHtml(selectedYear)}.</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="report-summary">
+          <article class="panel kpi-card"><div class="kpi-label">Reading sessions</div><div class="kpi-value">${rows.length}</div></article>
+          <article class="panel kpi-card"><div class="kpi-label">Books read</div><div class="kpi-value">${bookCount}</div></article>
+          <article class="panel kpi-card"><div class="kpi-label">Pages read</div><div class="kpi-value">${totalPages.toLocaleString()}</div></article>
+        </div>
+        <div class="panel report-table-wrap">
+          <table class="report-table">
+            <thead><tr><th>Date</th><th>Book</th><th>Starting page</th><th>Ending page</th><th>Pages read</th></tr></thead>
+            <tbody>${rows.map(row => `
+              <tr>
+                <td>${escapeHtml(formatReportDate(row.date))}</td>
+                <td>${escapeHtml(row.title)}</td>
+                <td>${row.start.toLocaleString()}</td>
+                <td>${row.end.toLocaleString()}</td>
+                <td>${row.pages.toLocaleString()}</td>
+              </tr>`).join('')}
+            </tbody>
+            <tfoot><tr><th colspan="4">Total pages read</th><th>${totalPages.toLocaleString()}</th></tr></tfoot>
+          </table>
+        </div>`;
+    }
+
+    function printReadingReport() {
+      renderReadingReport();
+      window.print();
+    }
+
     function renderAll() {
       renderStats();
       renderLog();
+      renderDailyTracker();
+      renderReadingReport();
       renderSummaries();
+    }
+
+    function saveDailyReading(id) {
+      const book = localCache.find(item => item.id === id);
+      if (!book) return;
+      const startPage = Number(document.getElementById(`dailyStart_${id}`).value);
+      const endPage = Number(document.getElementById(`dailyEnd_${id}`).value);
+      if (!Number.isInteger(startPage) || !Number.isInteger(endPage) || startPage < 1 || endPage < startPage) {
+        alert('Enter whole page numbers, with the ending page equal to or after the starting page.');
+        return;
+      }
+      if (book.pages > 0 && endPage > book.pages) {
+        alert(`The ending page cannot be greater than the book’s ${book.pages} pages.`);
+        return;
+      }
+
+      const oldLog = book.dailyLog.map(entry => ({ ...entry }));
+      const today = getTodayKey();
+      const nextEntry = { date: today, start: startPage, end: endPage };
+      const existingIndex = book.dailyLog.findIndex(entry => entry.date === today);
+      if (existingIndex >= 0) book.dailyLog[existingIndex] = nextEntry;
+      else book.dailyLog.push(nextEntry);
+      book.dailyLog.sort((a, b) => a.date.localeCompare(b.date));
+      renderDailyTracker();
+      updateStatusBanner('Saving today’s reading…', 'sync');
+
+      const payload = {};
+      payload[dailyLogKey] = JSON.stringify(book.dailyLog);
+      fetch(buildPatchUrl(book), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload })
+      })
+      .then(handleServerError)
+      .then(() => {
+        updateStatusBanner('Today’s reading saved.', 'success');
+        fetchAllData(false);
+      })
+      .catch(err => {
+        book.dailyLog = oldLog;
+        renderDailyTracker();
+        updateStatusBanner(`Daily reading save failed: ${err.message}`, 'fault');
+      });
     }
 
     function updateLiveCounter(id) {
@@ -1044,6 +1290,7 @@
       rowData[startKey] = '';
       rowData[finishKey] = '';
       rowData[summaryKey] = '';
+      rowData[dailyLogKey] = '[]';
 
       fetch(API_URL, {
         method: 'POST',
