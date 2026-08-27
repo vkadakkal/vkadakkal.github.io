@@ -700,9 +700,20 @@
               </div>
               <div class="row-tools report-actions">
                 <div class="field">
-                  <label for="reportYear">Report year</label>
-                  <select id="reportYear" onchange="renderReadingReport()"></select>
+                  <label for="reportRange">Date range</label>
+                  <select id="reportRange" onchange="applyReportPreset()">
+                    <option value="this-month">This month</option>
+                    <option value="last-month">Last month</option>
+                    <option value="this-quarter">This quarter</option>
+                    <option value="last-quarter">Last quarter</option>
+                    <option value="this-year" selected>This year</option>
+                    <option value="last-year">Last year</option>
+                    <option value="all-time">All time</option>
+                    <option value="custom">Custom dates</option>
+                  </select>
                 </div>
+                <div class="field"><label for="reportFrom">From</label><input id="reportFrom" type="date" onchange="useCustomReportRange()"></div>
+                <div class="field"><label for="reportTo">To</label><input id="reportTo" type="date" onchange="useCustomReportRange()"></div>
                 <button class="btn btn-primary" type="button" onclick="printReadingReport()">Print report</button>
               </div>
             </div>
@@ -1153,26 +1164,57 @@
       });
     }
 
+    function toDateKey(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function applyReportPreset() {
+      const preset = document.getElementById('reportRange').value;
+      const fromInput = document.getElementById('reportFrom');
+      const toInput = document.getElementById('reportTo');
+      const today = new Date();
+      let from = null, to = null;
+      if (preset === 'this-month') {
+        from = new Date(today.getFullYear(), today.getMonth(), 1); to = today;
+      } else if (preset === 'last-month') {
+        from = new Date(today.getFullYear(), today.getMonth() - 1, 1); to = new Date(today.getFullYear(), today.getMonth(), 0);
+      } else if (preset === 'this-quarter') {
+        const quarterStart = Math.floor(today.getMonth() / 3) * 3;
+        from = new Date(today.getFullYear(), quarterStart, 1); to = today;
+      } else if (preset === 'last-quarter') {
+        const thisQuarterStart = Math.floor(today.getMonth() / 3) * 3;
+        from = new Date(today.getFullYear(), thisQuarterStart - 3, 1); to = new Date(today.getFullYear(), thisQuarterStart, 0);
+      } else if (preset === 'this-year') {
+        from = new Date(today.getFullYear(), 0, 1); to = today;
+      } else if (preset === 'last-year') {
+        from = new Date(today.getFullYear() - 1, 0, 1); to = new Date(today.getFullYear() - 1, 11, 31);
+      }
+      fromInput.value = from ? toDateKey(from) : '';
+      toInput.value = to ? toDateKey(to) : '';
+      renderReadingReport();
+    }
+
+    function useCustomReportRange() {
+      document.getElementById('reportRange').value = 'custom';
+      renderReadingReport();
+    }
+
     function renderReadingReport() {
       const allRows = getDailyReportRows();
-      const yearSelect = document.getElementById('reportYear');
-      const currentSelection = yearSelect.value;
-      const years = [...new Set(allRows.map(row => row.date.slice(0, 4)))].sort().reverse();
-      const currentYear = String(new Date().getFullYear());
-      if (!years.includes(currentYear)) years.unshift(currentYear);
-      yearSelect.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join('');
-      yearSelect.value = years.includes(currentSelection) ? currentSelection : currentYear;
-
-      const selectedYear = yearSelect.value;
-      const rows = allRows.filter(row => row.date.startsWith(`${selectedYear}-`))
+      const from = document.getElementById('reportFrom').value;
+      const to = document.getElementById('reportTo').value;
+      const rows = allRows.filter(row => (!from || row.date >= from) && (!to || row.date <= to))
         .sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
       const totalPages = rows.reduce((sum, row) => sum + row.pages, 0);
       const bookCount = new Set(rows.map(row => row.title)).size;
-      document.getElementById('reportPrintedPeriod').textContent = `Reporting year: ${selectedYear}`;
+      const periodLabel = from || to
+        ? `${from ? formatReportDate(from) : 'Beginning'} – ${to ? formatReportDate(to) : 'Today'}`
+        : 'All recorded dates';
+      document.getElementById('reportPrintedPeriod').textContent = `Reporting period: ${periodLabel}`;
 
       const container = document.getElementById('readingReportContainer');
       if (!rows.length) {
-        container.innerHTML = `<div class="empty-state">No daily reading has been recorded for ${escapeHtml(selectedYear)}.</div>`;
+        container.innerHTML = `<div class="empty-state">No daily reading has been recorded for ${escapeHtml(periodLabel)}.</div>`;
         return;
       }
 
@@ -1542,6 +1584,7 @@
 
     window.onload = () => {
       document.getElementById('yearInput').value = new Date().getFullYear();
+      applyReportPreset();
       fetchAllData(false);
     };
   </script>
