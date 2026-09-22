@@ -1009,8 +1009,8 @@
               <div>
                 <h2 class="panel-title">Sort reading log by start date</h2>
                 <p class="panel-subtitle">
-                  This changes both the app’s default start-date order and the physical row order in the Google Sheet.
-                  Books without a start date are kept at the bottom.
+                  Sort the Reading Log by the date reading started. The selected preference is saved in the Google Sheet settings row,
+                  but book rows are never deleted, recreated, or moved. Books without a start date stay at the bottom.
                 </p>
               </div>
             </div>
@@ -1026,14 +1026,14 @@
 
               <div class="span-6" style="display:flex;align-items:end;">
                 <button class="btn btn-primary" style="width:100%;" type="button" onclick="sortSheetByStartDate()">
-                  Sort reading log &amp; Google Sheet
+                  Apply start-date sort
                 </button>
               </div>
             </div>
 
             <div class="admin-note">
-              Before rows are rewritten, the app keeps the fresh SheetDB response in memory.
-              If the rewrite fails after deletion, it automatically attempts to restore the original rows.
+              Safe mode: this control only saves the sort preference and changes the app display.
+              It does not delete or rewrite any book rows in Google Sheets.
             </div>
           </div>
         </section>
@@ -1228,23 +1228,50 @@
 
       const raw = String(dateStr).trim();
 
-      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-        return raw;
+      // ISO date or ISO datetime.
+      const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+      if (isoMatch) {
+        const [, yyyy, mm, dd] = isoMatch;
+        return `${yyyy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
       }
 
-      const match = raw.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
-      if (!match) return "";
+      // Existing tracker format: 01-Sep-2026.
+      const namedMonthMatch = raw.match(/^(\d{1,2})[-\/\s]([A-Za-z]{3,9})[-,\/\s]+(\d{4})$/);
+      if (namedMonthMatch) {
+        const monthMap = {
+          jan: "01", january: "01",
+          feb: "02", february: "02",
+          mar: "03", march: "03",
+          apr: "04", april: "04",
+          may: "05",
+          jun: "06", june: "06",
+          jul: "07", july: "07",
+          aug: "08", august: "08",
+          sep: "09", sept: "09", september: "09",
+          oct: "10", october: "10",
+          nov: "11", november: "11",
+          dec: "12", december: "12"
+        };
 
-      const monthMap = {
-        Jan: "01", Feb: "02", Mar: "03", Apr: "04",
-        May: "05", Jun: "06", Jul: "07", Aug: "08",
-        Sep: "09", Oct: "10", Nov: "11", Dec: "12"
-      };
+        const [, dd, monthName, yyyy] = namedMonthMatch;
+        const mm = monthMap[monthName.toLowerCase()];
+        if (mm) {
+          return `${yyyy}-${mm}-${String(dd).padStart(2, "0")}`;
+        }
+      }
 
-      const [, dd, mon, yyyy] = match;
-      if (!monthMap[mon]) return "";
+      // Common US Google Sheets display format: M/D/YYYY or MM/DD/YYYY.
+      const usMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (usMatch) {
+        const [, mm, dd, yyyy] = usMatch;
+        const month = Number(mm);
+        const day = Number(dd);
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${yyyy}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+      }
 
-      return `${yyyy}-${monthMap[mon]}-${dd}`;
+      return "";
     }
 
     function fromInputDate(dateStr) {
@@ -2555,138 +2582,52 @@
           ? "oldest"
           : "newest";
 
-      const directionLabel =
-        direction === "oldest"
-          ? "oldest start first"
-          : "newest start first";
+      const previousSettings = { ...trackerSettings };
+      trackerSettings.startSortDirection = direction;
 
-      const confirmed = window.confirm(
-        `Reorder the actual Google Sheet by start date (${directionLabel})? ` +
-        "Books without a start date will be placed at the bottom."
-      );
+      const readingLogSort = document.getElementById("sortSelect");
+      readingLogSort.value = direction === "oldest" ? "start-asc" : "start-desc";
 
-      if (!confirmed) return;
-
-      updateStatusBanner("Fetching a fresh sheet copy before sorting…", "sync");
-
-      let originalRows = [];
-      let deleteCompleted = false;
+      renderAll();
+      updateStatusBanner("Saving start-date sort preference…", "sync");
 
       try {
-        const freshResponse = await fetch(API_URL, { cache: "no-store" });
-        originalRows = await parseResponse(freshResponse);
+        if (settingsRowExists) {
+          const payload = {};
+          payload[summaryKey] = JSON.stringify(trackerSettings);
 
-        if (!Array.isArray(originalRows) || originalRows.length === 0) {
-          throw new Error("The sheet has no rows to sort.");
+          const response = await fetch(
+            `${API_URL}/${encodeURIComponent(titleKey)}/${encodeURIComponent(SETTINGS_TITLE)}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ data: payload })
+            }
+          );
+
+          await parseResponse(response);
+        } else {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: [buildSettingsRow()] })
+          });
+
+          await parseResponse(response);
+          settingsRowExists = true;
         }
 
-        inferKeys(originalRows);
-        loadSettingsFromRows(originalRows);
-
-        trackerSettings.startSortDirection = direction;
-
-        const settingsRow = buildSettingsRow();
-        const bookRows = [];
-        const nonBookRows = [];
-
-        originalRows.forEach((row, index) => {
-          const title = String(row[titleKey] || "").trim();
-
-          if (title === SETTINGS_TITLE) {
-            return;
-          }
-
-          if (title && title !== "Title") {
-            bookRows.push({
-              row: { ...row },
-              originalIndex: index
-            });
-          } else {
-            nonBookRows.push({ ...row });
-          }
-        });
-
-        bookRows.sort((a, b) => {
-          return compareByStartDate(
-            a.row[startKey],
-            b.row[startKey],
-            direction,
-            a.originalIndex - b.originalIndex
-          );
-        });
-
-        const rewrittenRows = [
-          ...bookRows.map(item => item.row),
-          ...nonBookRows,
-          settingsRow
-        ];
-
-        updateStatusBanner("Reordering rows in Google Sheets…", "sync");
-
-        const deleteResponse = await fetch(`${API_URL}/all`, {
-          method: "DELETE"
-        });
-
-        await parseResponse(deleteResponse);
-        deleteCompleted = true;
-
-        const writeResponse = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: rewrittenRows })
-        });
-
-        await parseResponse(writeResponse);
-
-        settingsRowExists = true;
-
-        const readingLogSort = document.getElementById("sortSelect");
-        readingLogSort.value = direction === "oldest" ? "start-asc" : "start-desc";
-
         syncAdminFields();
-        await fetchAllData(false);
-
         updateStatusBanner(
-          `Reading log and Google Sheet sorted by start date (${directionLabel}).`,
+          `Reading Log sorted by start date (${direction === "oldest" ? "oldest first" : "newest first"}). Preference saved safely in Google Sheets.`,
           "success"
         );
       } catch (error) {
-        if (deleteCompleted && originalRows.length) {
-          try {
-            // Clear anything partially written before restoration.
-            const clearResponse = await fetch(`${API_URL}/all`, {
-              method: "DELETE"
-            });
-
-            await parseResponse(clearResponse);
-
-            const restoreResponse = await fetch(API_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ data: originalRows })
-            });
-
-            await parseResponse(restoreResponse);
-
-            await fetchAllData(false);
-
-            updateStatusBanner(
-              `Sort failed; original sheet rows were restored. ${error.message}`,
-              "fault"
-            );
-
-            return;
-          } catch (restoreError) {
-            updateStatusBanner(
-              `Sort failed and automatic restore also failed: ${restoreError.message}`,
-              "fault"
-            );
-
-            return;
-          }
-        }
-
-        updateStatusBanner(`Sort failed: ${error.message}`, "fault");
+        trackerSettings = previousSettings;
+        readingLogSort.value = previousSettings.startSortDirection === "oldest" ? "start-asc" : "start-desc";
+        syncAdminFields();
+        renderAll();
+        updateStatusBanner(`Sort preference save failed: ${error.message}`, "fault");
       }
     }
 
