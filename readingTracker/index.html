@@ -805,7 +805,6 @@
               <div class="chip-row">
                 <div class="chip" id="totalFinishedBooks">📘 0 finished books</div>
                 <div class="chip" id="totalSummaryPoints">✨ 0 summary points</div>
-                <div class="chip" id="completionRate">⏱️ 0% completed</div>
               </div>
             </article>
 
@@ -1624,10 +1623,6 @@
         0
       );
 
-      const completionRate = totalBooks
-        ? Math.round((finishedBooks / totalBooks) * 100)
-        : 0;
-
       const summaryCount = localCache.filter(book => book.summary.trim()).length;
 
       const yearlyMap = {};
@@ -1671,9 +1666,6 @@
 
       document.getElementById("totalSummaryPoints").textContent =
         `✨ ${totalPoints.toLocaleString()} summary points`;
-
-      document.getElementById("completionRate").textContent =
-        `⏱️ ${completionRate}% completed`;
 
       document.getElementById("currentlyReadingCount").textContent =
         readingBooks.toLocaleString();
